@@ -1,3 +1,13 @@
+/* Paleta de Halloween (tomada de la imagen del tablero) */
+:root {
+  --color-fondo: #5e4c47;
+  --color-sangre: #ff3131;
+  --color-calabaza: #f0872a;
+  --color-hueso: #f2efe9;
+  --color-texto: #ffffff;
+  --color-sombra: rgba(0, 0, 0, 0.85);
+}
+
 html {
   height: 100%;
 }
@@ -13,8 +23,8 @@ body {
   display: flex;
   flex-direction: column;
   font-family: Arial, Helvetica, sans-serif;
-  color: #fff;
-  background-color: #000;
+  color: var(--color-texto);
+  background-color: var(--color-fondo);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
