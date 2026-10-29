@@ -1,17 +1,20 @@
 import styles from "./Tablero.module.css";
+import { generarTablero } from "@/lib/tablero";
 
-export default function Tablero() {
+type TableroProps = {
+    uuid: string;
+};
+
+export default function Tablero({ uuid }: TableroProps) {
+    const categorias = generarTablero(uuid);
+
     return (
-        <div className={styles.tablero}>
-            <div className={styles.celda}></div>
-            <div className={styles.celda}></div>
-            <div className={styles.celda}></div>
-            <div className={styles.celda}></div>
-            <div className={styles.celda}></div>
-            <div className={styles.celda}></div>
-            <div className={styles.celda}></div>
-            <div className={styles.celda}></div>
-            <div className={styles.celda}></div>
-        </div>
+        <ul className={styles.tablero} aria-label="Tablero de bingo">
+            {categorias.map((categoria) => (
+                <li key={categoria} className={styles.celda}>
+                    <span className={styles.categoria}>{categoria}</span>
+                </li>
+            ))}
+        </ul>
     );
 }

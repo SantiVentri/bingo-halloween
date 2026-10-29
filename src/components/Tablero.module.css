@@ -1,13 +1,27 @@
+/* Ocupa todo el espacio que le da el contenedor (la grilla dibujada en la imagen) */
 .tablero {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    border: 1px solid red;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    width: 100%;
+    height: 100%;
+    list-style: none;
 }
 
 .celda {
-    background-color: #fff;
-    outline: 1px solid black;
-    outline-offset: -1;
-    height: 115px;
-    width: 122px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4%;
+    text-align: center;
+}
+
+/* cqw: relativo al ancho del póster, así el texto escala con la pantalla */
+.categoria {
+    font-size: 4.2cqw;
+    font-weight: bold;
+    line-height: 1.15;
+    color: var(--color-texto);
+    text-shadow: 0 0 0.6cqw var(--color-sombra);
+    overflow-wrap: anywhere;
 }

@@ -1,23 +1,29 @@
-:global(body) {
-    background-color: #614d48;
-}
-
 .page {
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: #614d48;
-    height: 100vh;
+    min-height: 100dvh;
+}
+
+/* Mantiene la proporción de la imagen (1414x2000) y entra entera en la pantalla */
+.poster {
+    position: relative;
+    width: min(100vw, 100dvh * 1414 / 2000, 600px);
+    aspect-ratio: 1414 / 2000;
+    container-type: inline-size;
 }
 
 .imagen {
-    position: absolute;
-    height: 600px;
-    width: auto;
-    z-index: 0;
+    display: block;
+    width: 100%;
+    height: auto;
 }
 
-.main {
-    margin-top: 153px;
-    z-index: 1;
+/* Interior de la grilla roja de la imagen, en % para que coincida en cualquier ancho */
+.grilla {
+    position: absolute;
+    left: 6.5%;
+    top: 33.75%;
+    width: 87.8%;
+    height: 58.15%;
 }
