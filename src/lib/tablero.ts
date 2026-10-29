@@ -1,0 +1,25 @@
+export const CATEGORIAS = [
+  "Preso",
+  "Conejita",
+  "Pirata",
+  "Policia",
+  "Militar",
+  "Princesa",
+  "Politico",
+  "Animal",
+  "Harry Potter",
+  "Personajes de Series",
+  "Diablita/o",
+  "Angelita/o",
+  "SuperHeroe",
+  "Payaso",
+  "Jugador de Futbol",
+  "Personaje Argentino",
+  "Villano",
+  "Hombres de negro",
+  "Personaje de videojuegos",
+  "Otaku / Emo",
+  "Brainrot / Meme",
+] as const;
+
+const TAMANO_TABLERO = 9;
