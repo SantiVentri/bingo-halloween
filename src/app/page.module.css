@@ -1,0 +1,14 @@
+.page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+}
+
+.link {
+    background-color: #fff;
+    color: #000;
+    padding: 15px 80px;
+    border-radius: 10px;
+    font-weight: bold;
+}

@@ -1,0 +1,13 @@
+.tablero {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    border: 1px solid red;
+}
+
+.celda {
+    background-color: #fff;
+    outline: 1px solid black;
+    outline-offset: -1;
+    height: 115px;
+    width: 122px;
+}

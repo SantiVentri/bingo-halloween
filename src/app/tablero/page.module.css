@@ -1,0 +1,23 @@
+:global(body) {
+    background-color: #614d48;
+}
+
+.page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #614d48;
+    height: 100vh;
+}
+
+.imagen {
+    position: absolute;
+    height: 600px;
+    width: auto;
+    z-index: 0;
+}
+
+.main {
+    margin-top: 153px;
+    z-index: 1;
+}
