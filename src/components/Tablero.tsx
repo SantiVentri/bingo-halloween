@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState, type CSSProperties, type PointerEvent } from "react";
+import { Camera, Check, CloudUpload, Dices, Star } from "lucide-react";
 import styles from "./Tablero.module.css";
 import type { Foto } from "@/lib/fotos";
 
@@ -65,6 +66,7 @@ export default function Tablero({
                             <button
                                 type="button"
                                 className={`${styles.boton} ${styles.cambiable}`}
+                                data-con-foto={ultima ? true : undefined}
                                 aria-label={`Cambiar la categoría ${categoria}`}
                                 onClick={() => onElegirCambio(posicion)}
                             >
@@ -73,7 +75,7 @@ export default function Tablero({
                                     <img src={urlDeFoto(ultima)} alt="" className={styles.miniatura} draggable={false} />
                                 )}
                                 <span className={styles.categoria}>{categoria}</span>
-                                <span className={styles.estadoCambio} aria-hidden="true">🎲</span>
+                                <span className={`${styles.estado} ${styles.estadoCambio}`} aria-hidden="true"><Dices /></span>
                             </button>
                         </li>
                     );
@@ -83,13 +85,13 @@ export default function Tablero({
                     const elegida = fotosCelda.find((foto) => foto.id === elegidas[categoria]);
                     return (
                         <li key={categoria} className={styles.celda}>
-                            <div className={styles.boton} aria-label={`${categoria}: foto elegida`}>
+                            <div className={styles.boton} data-con-foto={elegida ? true : undefined} aria-label={`${categoria}: foto elegida`}>
                                 {elegida && (
                                     // eslint-disable-next-line @next/next/no-img-element -- vista previa de un blob local
                                     <img src={urlDeFoto(elegida)} alt="" className={styles.miniatura} draggable={false} />
                                 )}
                                 <span className={styles.categoria}>{categoria}</span>
-                                <span className={styles.estadoElegida} aria-hidden="true">★</span>
+                                <span className={`${styles.estado} ${styles.estadoElegida}`} aria-hidden="true"><Star /></span>
                             </div>
                         </li>
                     );
@@ -101,6 +103,7 @@ export default function Tablero({
                             Mantener apretado pide borrar la última foto (RF-14) */}
                         <label
                             className={styles.boton}
+                            data-con-foto={ultima ? true : undefined}
                             data-manteniendo={manteniendo === categoria || undefined}
                             onPointerDown={(evento: PointerEvent) => {
                                 seMantuvo.current = false;
@@ -157,15 +160,17 @@ export default function Tablero({
                                 // eslint-disable-next-line @next/next/no-img-element -- vista previa de un blob local
                                 <img src={urlDeFoto(ultima)} alt="" className={styles.miniatura} draggable={false} />
                             )}
+                            {!ultima && <Camera className={styles.camara} aria-hidden="true" />}
                             <span className={styles.categoria}>{categoria}</span>
                             {fotosCelda.length > 0 && (
                                 <span
-                                    className={pendientes > 0 ? styles.estadoPendiente : styles.estadoSubida}
+                                    className={`${styles.estado} ${pendientes > 0 ? styles.estadoPendiente : styles.estadoSubida}`}
                                     aria-label={pendientes > 0
                                         ? `${fotosCelda.length} fotos, ${pendientes} sin subir`
                                         : `${fotosCelda.length} fotos subidas`}
                                 >
-                                    {pendientes > 0 ? "⏳" : "✓"} {fotosCelda.length}
+                                    {pendientes > 0 ? <CloudUpload /> : <Check />}
+                                    {fotosCelda.length > 1 && <span>{fotosCelda.length}</span>}
                                 </span>
                             )}
                         </label>

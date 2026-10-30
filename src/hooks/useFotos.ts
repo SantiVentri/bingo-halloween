@@ -5,32 +5,30 @@ import { generarUuid } from "@/lib/jugador";
 import { borrarFoto, guardarFoto, listarFotos, obtenerFoto, type Foto } from "@/lib/fotos";
 import { comprimirImagen, TAMANO_MAXIMO } from "@/lib/imagenes";
 import { borrarFotoSubida, borrarFotosSubidas, subirFoto } from "@/lib/subidas";
+import { useAvisos } from "@/components/Avisos";
 
-const AVISO_FALLA = "Algunas fotos no se pudieron subir. Quedaron guardadas para reintentar.";
-const AVISO_MANTENER = "Tip: mantené apretada una celda para borrar su última foto.";
+const CLAVE_CONSEJO = "bingo-halloween:consejo-borrar";
 
 type UsoFotos = {
     fotos: Foto[];
     // true hasta leer las fotos guardadas en IndexedDB
     cargando: boolean;
     subiendo: boolean;
-    aviso: string;
     agregarFotos: (categoria: string, archivos: File[]) => Promise<void>;
     reintentar: () => void;
     urlDeFoto: (foto: Foto) => string;
     eliminarFoto: (foto: Foto) => Promise<boolean>;
-    // Muestra un aviso en el tablero
-    avisar: (texto: string) => void;
     eliminarTodas: () => Promise<boolean>;
 };
 
 // Fotos del jugador: se guardan primero en IndexedDB, se muestran al instante
-// y después se suben a UploadThing. Si falla, quedan pendientes (RF-06 a RF-13, NF-10)
+// y después se suben a UploadThing. Si falla, quedan pendientes (RF-06 a RF-13, NF-10).
+// Los mensajes salen como avisos flotantes
 export function useFotos(uuid: string): UsoFotos {
     const [fotos, setFotos] = useState<Foto[]>([]);
     const [cargando, setCargando] = useState(true);
     const [subiendo, setSubiendo] = useState(false);
-    const [aviso, setAviso] = useState("");
+    const avisar = useAvisos();
     const enCurso = useRef(false);
     const urlsLocales = useRef(new Map<string, string>());
     // Fotos ya borradas: si alguna terminaba de subirse justo después, se borra también de la nube
@@ -43,12 +41,12 @@ export function useFotos(uuid: string): UsoFotos {
     }
 
     // Sube de a una. Relee IndexedDB en cada vuelta para tomar las fotos que se
-    // agregaron mientras subía; las que fallan se dejan para el próximo intento
-    const subirPendientes = useCallback(async () => {
+    // agregaron mientras subía; las que fallan se dejan para el próximo intento.
+    // Solo avisa del error si se reintentó a mano: si no, ya lo muestra el tablero
+    const subirPendientes = useCallback(async (manual = false) => {
         if (enCurso.current) return;
         enCurso.current = true;
         setSubiendo(true);
-        setAviso((anterior) => (anterior === AVISO_FALLA ? "" : anterior));
         const fallidas = new Set<string>();
         try {
             while (true) {
@@ -75,16 +73,21 @@ export function useFotos(uuid: string): UsoFotos {
                     fallidas.add(pendiente.id);
                 }
             }
-            if (fallidas.size > 0) {
-                setAviso(AVISO_FALLA);
+            if (fallidas.size > 0 && manual) {
+                avisar({
+                    tipo: "error",
+                    texto: fallidas.size === 1
+                        ? "No se pudo subir 1 foto. Quedó guardada en el celular."
+                        : `No se pudieron subir ${fallidas.size} fotos. Quedaron guardadas en el celular.`,
+                });
             }
         } catch {
-            setAviso("No se pudieron leer las fotos guardadas en este dispositivo.");
+            avisar({ tipo: "error", texto: "No se pudieron leer las fotos guardadas en este celular." });
         } finally {
             enCurso.current = false;
             setSubiendo(false);
         }
-    }, [uuid]);
+    }, [uuid, avisar]);
 
     // Borra primero de UploadThing y después del celular (RF-14). Si la nube falla,
     // la foto se queda para que se pueda volver a intentar y no quede huérfana
@@ -97,7 +100,7 @@ export function useFotos(uuid: string): UsoFotos {
             eliminadas.current.add(foto.id);
             await borrarFoto(foto.id);
         } catch {
-            setAviso("No se pudo borrar la foto. Revisá la conexión y probá de nuevo.");
+            avisar({ tipo: "error", texto: "No se pudo borrar la foto. Revisá la conexión y probá de nuevo." });
             return false;
         }
         setFotos((anteriores) => anteriores.filter((otra) => otra.id !== foto.id));
@@ -106,7 +109,6 @@ export function useFotos(uuid: string): UsoFotos {
             URL.revokeObjectURL(urlLocal);
             urlsLocales.current.delete(foto.id);
         }
-        setAviso((anterior) => (anterior === AVISO_MANTENER ? "" : anterior));
         return true;
     }
 
@@ -124,13 +126,12 @@ export function useFotos(uuid: string): UsoFotos {
                 await borrarFoto(foto.id);
             }
         } catch {
-            setAviso("No se pudieron borrar las fotos. Revisá la conexión y probá de nuevo.");
+            avisar({ tipo: "error", texto: "No se pudieron borrar las fotos. Revisá la conexión y probá de nuevo." });
             return false;
         }
         setFotos([]);
         urlsLocales.current.forEach((url) => URL.revokeObjectURL(url));
         urlsLocales.current.clear();
-        setAviso("");
         return true;
     }
 
@@ -147,17 +148,18 @@ export function useFotos(uuid: string): UsoFotos {
             .catch(() => {
                 if (!vigente) return;
                 setCargando(false);
-                setAviso("No se pudieron leer las fotos guardadas en este dispositivo.");
+                avisar({ tipo: "error", texto: "No se pudieron leer las fotos guardadas en este celular.", duracion: null });
             });
         return () => {
             vigente = false;
         };
-    }, [uuid, subirPendientes]);
+    }, [uuid, subirPendientes, avisar]);
 
     // Reintento automático al recuperar la conexión (RF-12)
     useEffect(() => {
-        window.addEventListener("online", subirPendientes);
-        return () => window.removeEventListener("online", subirPendientes);
+        const alVolver = () => subirPendientes();
+        window.addEventListener("online", alVolver);
+        return () => window.removeEventListener("online", alVolver);
     }, [subirPendientes]);
 
     // Libera las vistas previas al salir del tablero
@@ -181,8 +183,15 @@ export function useFotos(uuid: string): UsoFotos {
     }, []);
 
     async function agregarFotos(categoria: string, archivos: File[]) {
-        // Con la primera foto se explica cómo borrar
-        setAviso(fotos.length === 0 ? AVISO_MANTENER : "");
+        // Con la primera foto se explica, una sola vez, cómo borrar
+        try {
+            if (!localStorage.getItem(CLAVE_CONSEJO)) {
+                localStorage.setItem(CLAVE_CONSEJO, "1");
+                avisar({ texto: "Para borrar una foto, mantené apretada su celda." });
+            }
+        } catch {
+            // Sin localStorage no se muestra el consejo
+        }
         // Pide que el navegador no borre las fotos guardadas (NF-05)
         navigator.storage?.persist?.().catch(() => { });
 
@@ -207,16 +216,19 @@ export function useFotos(uuid: string): UsoFotos {
             try {
                 await guardarFoto(foto);
             } catch {
-                setAviso("No se pudo guardar la foto en este dispositivo.");
+                avisar({ tipo: "error", texto: "No se pudo guardar la foto en este celular." });
                 return;
             }
             setFotos((anteriores) => [...anteriores, foto]);
         }
 
         if (descartadas > 0) {
-            setAviso(descartadas === 1
-                ? "Una foto pesa más de 8 MB y no se agregó."
-                : `${descartadas} fotos pesan más de 8 MB y no se agregaron.`);
+            avisar({
+                tipo: "error",
+                texto: descartadas === 1
+                    ? "Una foto pesa más de 8 MB y no se agregó."
+                    : `${descartadas} fotos pesan más de 8 MB y no se agregaron.`,
+            });
         }
         subirPendientes();
     }
@@ -225,12 +237,10 @@ export function useFotos(uuid: string): UsoFotos {
         fotos,
         cargando,
         subiendo,
-        aviso,
         agregarFotos,
-        reintentar: subirPendientes,
+        reintentar: () => subirPendientes(true),
         urlDeFoto,
         eliminarFoto,
-        avisar: setAviso,
         eliminarTodas,
     };
 }

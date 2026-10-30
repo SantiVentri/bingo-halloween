@@ -1,80 +1,63 @@
-/* cqw: escala con el póster, igual que el texto del tablero */
-.abrir {
-    flex-shrink: 0;
-    padding: 1cqw 3cqw;
-    border: none;
-    border-radius: 2cqw;
-    background-color: var(--color-sangre);
-    color: var(--color-texto);
-    font: inherit;
-    font-size: 3.5cqw;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-.dialogo {
-    margin: auto;
-    width: min(100% - 32px, 420px);
-    padding: 20px;
-    border: 2px solid var(--color-sangre);
-    max-height: calc(100dvh - 32px);
-    border-radius: 12px;
-    background-color: var(--color-fondo);
-    color: var(--color-texto);
-}
-
-.dialogo::backdrop {
-    background-color: var(--color-sombra);
-}
-
-.titulo {
-    margin-bottom: 12px;
-    font-size: 20px;
-}
-
-.titulo:not(:first-child) {
-    margin-top: 24px;
-}
-
 .seccion {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
+}
+
+.seccion + .seccion {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--borde);
+}
+
+.subtitulo {
+    font-size: 15px;
+    font-weight: 800;
 }
 
 .texto {
-    line-height: 1.4;
+    font-size: 15px;
+    color: var(--texto-suave);
 }
 
 .advertencia {
-    padding: 8px 12px;
-    border-left: 4px solid var(--color-calabaza);
-    line-height: 1.4;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: var(--radio-s);
+    background-color: rgba(240, 135, 42, 0.14);
+    color: #ffd2a8;
+    font-size: 14px;
+}
+
+.advertencia svg {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
+}
+
+.detalle summary {
+    padding: 4px 0;
+    color: var(--texto-suave);
+    font-size: 14px;
+    cursor: pointer;
 }
 
 /* Se puede seleccionar a mano si el portapapeles no anda */
 .respaldo {
-    max-height: 140px;
+    max-height: 160px;
+    margin-top: 8px;
     padding: 12px;
     overflow: auto;
-    border: 2px dashed var(--color-calabaza);
-    border-radius: 8px;
-    font-family: var(--font-geist-mono), monospace;
+    border: 1px solid var(--borde);
+    border-radius: var(--radio-s);
+    background-color: var(--fondo);
+    font-family: var(--fuente-mono);
     font-size: 12px;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     user-select: all;
     -webkit-user-select: all;
-}
-
-.cerrar {
-    width: 100%;
-    margin-top: 12px;
-    padding: 12px;
-    border: 1px solid var(--color-hueso);
-    border-radius: 10px;
-    background: none;
-    color: var(--color-texto);
-    font: inherit;
-    cursor: pointer;
 }

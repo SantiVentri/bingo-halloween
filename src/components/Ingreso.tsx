@@ -2,8 +2,9 @@
 
 import { use, useState, type FormEvent } from "react";
 import { browser } from "react-dom";
-import Link from "next/link";
+import { ArrowLeft, KeyRound, TriangleAlert } from "lucide-react";
 import styles from "./Ingreso.module.css";
+import Boton from "@/components/ui/Boton";
 import CodigoRecuperacion from "@/components/CodigoRecuperacion";
 import {
     LARGO_MAXIMO_NOMBRE,
@@ -76,53 +77,67 @@ export default function Ingreso() {
 
     if (paso === "seguir" && jugador) {
         return (
-            <div className={styles.ingreso}>
-                <h1 className={styles.titulo}>¡Hola de nuevo, {jugador.nombre}!</h1>
-                <Link href="/tablero" className={styles.principal}>Ir a mi tablero</Link>
-                <button type="button" className={styles.secundario} onClick={() => cambiarPaso("recuperar")}>
+            <div key="seguir" className={styles.ingreso}>
+                <div className={styles.encabezado}>
+                    <h1 className={styles.titulo}>¡Hola de nuevo, {jugador.nombre}!</h1>
+                    <p className={styles.bajada}>Tu tablero te está esperando.</p>
+                </div>
+                <Boton href="/tablero" anchoCompleto>Ir a mi tablero</Boton>
+                <Boton variante="fantasma" anchoCompleto onClick={() => cambiarPaso("recuperar")}>
                     Usar otro código
-                </button>
+                </Boton>
             </div>
         );
     }
 
     if (paso === "codigo" && jugador) {
         return (
-            <div className={styles.ingreso}>
-                <h1 className={styles.titulo}>¡Listo, {jugador.nombre}!</h1>
+            <div key="codigo" className={styles.ingreso}>
+                <div className={styles.encabezado}>
+                    <span className={styles.iconoTitulo} aria-hidden="true"><KeyRound /></span>
+                    <h1 className={styles.titulo}>¡Listo, {jugador.nombre}!</h1>
+                    <p className={styles.bajada}>
+                        Este es tu código de recuperación. Guardalo (por ejemplo, mandátelo por WhatsApp):
+                        si cambiás de celular o se borran los datos, es la única forma de recuperar tu tablero.
+                    </p>
+                </div>
                 <CodigoRecuperacion codigo={jugador.uuid} />
-                <Link href="/tablero" className={styles.principal}>Ya lo guardé, ir al tablero</Link>
+                <Boton href="/tablero" anchoCompleto>Ya lo guardé, ir al tablero</Boton>
             </div>
         );
     }
 
     if (paso === "recuperar") {
         return (
-            <form className={styles.ingreso} onSubmit={recuperar} noValidate>
-                <h1 className={styles.titulo}>Recuperar mi tablero</h1>
+            <form key="recuperar" className={styles.ingreso} onSubmit={recuperar} noValidate>
+                <div className={styles.encabezado}>
+                    <h1 className={styles.titulo}>Recuperar mi tablero</h1>
+                    <p className={styles.bajada}>Pegá tu código o el respaldo completo que copiaste en el otro celular.</p>
+                </div>
                 {jugador && (
                     <p className={styles.advertencia}>
-                        Esto reemplaza el tablero de {jugador.nombre} en este dispositivo.
-                        Guardá su código antes si lo vas a necesitar.
+                        <TriangleAlert aria-hidden="true" />
+                        <span>
+                            Esto reemplaza el tablero de {jugador.nombre} en este celular.
+                            Guardá su código antes si lo vas a necesitar.
+                        </span>
                     </p>
                 )}
                 <label className={styles.campo}>
-                    Código de recuperación o respaldo
+                    <span className={styles.etiqueta}>Código o respaldo</span>
                     <textarea
                         name="codigo"
-                        className={styles.input}
+                        className={`${styles.input} ${styles.areaCodigo}`}
                         rows={3}
                         autoComplete="off"
                         autoCapitalize="off"
                         spellCheck={false}
                         placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
                     />
-                    <span className={styles.ayuda}>
-                        Si pegás el respaldo completo, también se recuperan tus fotos.
-                    </span>
+                    <span className={styles.ayuda}>Con el respaldo completo también se recuperan tus fotos.</span>
                 </label>
                 <label className={styles.campo}>
-                    Tu nombre {!jugador && <span className={styles.ayuda}>(si pegaste el respaldo, podés dejarlo vacío)</span>}
+                    <span className={styles.etiqueta}>Tu nombre</span>
                     <input
                         name="nombre"
                         className={styles.input}
@@ -130,38 +145,46 @@ export default function Ingreso() {
                         autoComplete="given-name"
                         defaultValue={jugador?.nombre}
                     />
+                    {!jugador && <span className={styles.ayuda}>Si pegaste el respaldo, podés dejarlo vacío.</span>}
                 </label>
                 {error && <p className={styles.error} role="alert">{error}</p>}
-                <button type="submit" className={styles.principal}>Recuperar tablero</button>
-                <button
-                    type="button"
-                    className={styles.secundario}
+                <Boton type="submit" anchoCompleto>Recuperar tablero</Boton>
+                <Boton
+                    variante="fantasma"
+                    anchoCompleto
+                    icono={<ArrowLeft />}
                     onClick={() => cambiarPaso(jugador ? "seguir" : "nuevo")}
                 >
                     Volver
-                </button>
+                </Boton>
             </form>
         );
     }
 
     return (
-        <form className={styles.ingreso} onSubmit={ingresar} noValidate>
-            <h1 className={styles.titulo}>Bingo de Halloween</h1>
+        // Cada formulario lleva su key: si no, React reutiliza el botón "Ya tengo código"
+        // como el submit del formulario siguiente en medio del clic y lo envía vacío
+        <form key="nuevo" className={styles.ingreso} onSubmit={ingresar} noValidate>
+            <div className={styles.encabezado}>
+                <h1 className={styles.titulo}>Encontrá a los 9 disfrazados</h1>
+                <p className={styles.bajada}>Poné tu nombre y te toca un tablero con 9 disfraces para fotografiar.</p>
+            </div>
             <label className={styles.campo}>
-                ¿Cómo te llamás?
+                <span className={styles.etiqueta}>¿Cómo te llamás?</span>
                 <input
                     name="nombre"
                     className={styles.input}
                     maxLength={LARGO_MAXIMO_NOMBRE}
                     autoComplete="given-name"
-                    autoFocus
+                    placeholder="Tu nombre"
                 />
             </label>
             {error && <p className={styles.error} role="alert">{error}</p>}
-            <button type="submit" className={styles.principal}>Empezar</button>
-            <button type="button" className={styles.secundario} onClick={() => cambiarPaso("recuperar")}>
+            <Boton type="submit" anchoCompleto>Empezar</Boton>
+            <div className={styles.separador}><span>¿Ya jugaste en otro celular?</span></div>
+            <Boton variante="secundario" anchoCompleto onClick={() => cambiarPaso("recuperar")}>
                 Ya tengo código
-            </button>
+            </Boton>
         </form>
     );
 }

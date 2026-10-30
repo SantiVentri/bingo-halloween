@@ -1,0 +1,103 @@
+/* Las pantallas con una barra fija abajo suben los avisos con --margen-avisos */
+.avisos {
+    position: fixed;
+    left: 50%;
+    bottom: calc(var(--margen-avisos, 16px) + env(safe-area-inset-bottom));
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: min(100% - 32px, 440px);
+    list-style: none;
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+
+.aviso {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 8px 10px 14px;
+    border: 1px solid var(--borde);
+    border-left: 4px solid var(--hueso);
+    border-radius: var(--radio-m);
+    background-color: var(--fondo-profundo);
+    box-shadow: var(--elevacion);
+    font-size: 15px;
+    font-weight: 600;
+    pointer-events: auto;
+    animation: entrar 0.2s ease-out;
+}
+
+.exito {
+    border-left-color: var(--exito);
+}
+
+.error {
+    border-left-color: var(--peligro);
+}
+
+.icono {
+    display: inline-flex;
+    flex-shrink: 0;
+}
+
+.icono svg {
+    width: 20px;
+    height: 20px;
+}
+
+.info .icono {
+    color: var(--hueso);
+}
+
+.exito .icono {
+    color: var(--exito);
+}
+
+.error .icono {
+    color: var(--peligro);
+}
+
+.texto {
+    flex: 1;
+    line-height: 1.3;
+}
+
+.accion {
+    flex-shrink: 0;
+    padding: 6px 10px;
+    border: none;
+    border-radius: var(--radio-s);
+    background-color: var(--superficie-alta);
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.cerrar {
+    display: inline-flex;
+    flex-shrink: 0;
+    padding: 6px;
+    border: none;
+    border-radius: var(--radio-s);
+    background: none;
+    color: var(--texto-suave);
+}
+
+.cerrar svg {
+    width: 18px;
+    height: 18px;
+}
+
+@keyframes entrar {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .aviso {
+        animation: none;
+    }
+}

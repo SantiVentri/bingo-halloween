@@ -1,21 +1,41 @@
-/* Centrado sobre el póster del tablero o solo en la página de elección */
-.sinJugador {
-    position: absolute;
-    inset: 0;
+.pantalla {
+    flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 16px;
+    gap: 12px;
+    min-height: 60dvh;
     padding: 24px;
-    background-color: var(--color-sombra);
-    font-weight: bold;
     text-align: center;
 }
 
-.boton {
-    padding: 14px 32px;
-    border-radius: 10px;
-    background-color: var(--color-sangre);
-    color: var(--color-texto);
+.icono {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    border-radius: var(--radio-total);
+    background-color: var(--superficie);
+    color: var(--hueso);
+}
+
+.icono svg {
+    width: 30px;
+    height: 30px;
+}
+
+.titulo {
+    font-family: var(--fuente-titulo);
+    font-size: 30px;
+    font-weight: 400;
+    line-height: 1.1;
+    letter-spacing: 0.02em;
+}
+
+.texto {
+    max-width: 340px;
+    margin-bottom: 8px;
+    color: var(--texto-suave);
 }
