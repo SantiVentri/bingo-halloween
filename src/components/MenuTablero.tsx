@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from "react";
-import { ChevronRight, Dices, LifeBuoy, Trash2 } from "lucide-react";
+import { ChevronRight, Dices, LifeBuoy, Trash2, Users } from "lucide-react";
 import styles from "./MenuTablero.module.css";
 import Dialogo from "@/components/ui/Dialogo";
 
@@ -14,6 +14,7 @@ type MenuTableroProps = {
     onRespaldo: () => void;
     onCambiar: () => void;
     onBorrarTodo: () => void;
+    onRevision: () => void;
 };
 
 type OpcionProps = {
@@ -56,6 +57,7 @@ export default function MenuTablero({
     onRespaldo,
     onCambiar,
     onBorrarTodo,
+    onRevision,
 }: MenuTableroProps) {
     function elegir(accion: () => void) {
         onCerrar();
@@ -70,6 +72,12 @@ export default function MenuTablero({
                     titulo="Respaldo"
                     detalle="Tu código y el respaldo de tus fotos"
                     onElegir={() => elegir(onRespaldo)}
+                />
+                <Opcion
+                    icono={<Users />}
+                    titulo="Revisión del grupo"
+                    detalle="Ver las entregas de todos y votar las fotos"
+                    onElegir={() => elegir(onRevision)}
                 />
                 <Opcion
                     icono={<Dices />}

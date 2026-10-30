@@ -2,6 +2,7 @@
 
 import { use, useState, type ReactNode } from "react";
 import { browser } from "react-dom";
+import { useRouter } from "next/navigation";
 import { CloudUpload, Dices, Ellipsis, Hand, Lock, PartyPopper, RefreshCw } from "lucide-react";
 import styles from "./TableroDelJugador.module.css";
 import SinJugador from "@/components/SinJugador";
@@ -18,6 +19,7 @@ import type { Foto } from "@/lib/fotos";
 import { CAMBIOS_MAXIMOS, generarTablero, sortearCategoria } from "@/lib/tablero";
 import { guardarEleccion } from "@/lib/eleccion";
 import { guardarCambios } from "@/lib/cambios";
+import { retirarEntrega } from "@/lib/entrega";
 import { useFotos } from "@/hooks/useFotos";
 import { useCambios, useEleccion } from "@/hooks/useAlmacen";
 
@@ -38,6 +40,7 @@ export default function TableroDelJugador() {
 function TableroConFotos({ jugador }: { jugador: Jugador }) {
     const { fotos, subiendo, agregarFotos, reintentar, urlDeFoto, eliminarFoto, eliminarTodas } = useFotos(jugador.uuid);
     const avisar = useAvisos();
+    const router = useRouter();
     // La elección y los cambios se leen de localStorage en cada render: así se
     // actualizan aunque Next haya dejado esta pantalla oculta al navegar
     const eleccion = useEleccion(jugador.uuid);
@@ -84,7 +87,12 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
         avisar({ tipo: "exito", texto: "Se borraron todas las fotos del tablero." });
     }
 
-    function reabrir() {
+    // Al reabrir, la entrega sale de la revisión hasta que se vuelva a cerrar
+    async function reabrir() {
+        if (!(await retirarEntrega(jugador.uuid))) {
+            avisar({ tipo: "error", texto: "No se pudo reabrir. Revisá la conexión y probá de nuevo." });
+            return;
+        }
         guardarEleccion(jugador.uuid, { ...eleccion, confirmadaEn: null });
     }
 
@@ -120,7 +128,7 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
     } else if (cerrado) {
         pie = (
             <>
-                <Estado icono={<Lock />} titulo="Tablero cerrado" detalle="Tus 9 fotos ya están elegidas" />
+                <Estado icono={<Lock />} titulo="Tablero entregado" detalle="Ya está en la revisión del grupo" />
                 <Boton variante="secundario" onClick={() => setReabriendo(true)}>Reabrir</Boton>
             </>
         );
@@ -184,6 +192,7 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
                 onRespaldo={() => setRespaldoAbierto(true)}
                 onCambiar={() => setModoCambio(true)}
                 onBorrarTodo={() => setBorrandoTodo(fotos.length)}
+                onRevision={() => router.push("/revision")}
             />
             <Respaldo
                 abierto={respaldoAbierto}
@@ -228,7 +237,7 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
             <Confirmacion
                 abierta={reabriendo}
                 titulo="¿Reabrir tu tablero?"
-                texto="Vas a poder agregar y borrar fotos otra vez. Después tenés que volver a confirmar tus 9 fotos."
+                texto="Tu entrega sale de la revisión y vas a poder agregar y borrar fotos otra vez. Después tenés que volver a confirmar tus 9 fotos."
                 accion="Reabrir"
                 accionEnCurso="Reabriendo…"
                 onConfirmar={reabrir}
