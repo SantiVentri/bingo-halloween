@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, type PointerEvent } from "react";
+import { useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import styles from "./Tablero.module.css";
 import { generarTablero } from "@/lib/tablero";
 import type { Foto } from "@/lib/fotos";
@@ -22,20 +22,28 @@ export default function Tablero({ uuid, fotos, urlDeFoto, onAgregarFotos, onPedi
     // Evita que el toque largo abra además el selector de fotos
     const seMantuvo = useRef(false);
     const ultimoPuntero = useRef("");
+    // Celda que se está manteniendo apretada, para mostrar cuánto falta
+    const [manteniendo, setManteniendo] = useState<string | null>(null);
 
     function cancelarPresion() {
         if (presion.current) window.clearTimeout(presion.current.temporizador);
         presion.current = null;
+        setManteniendo(null);
     }
 
     function pedirBorrado(foto: Foto) {
         seMantuvo.current = true;
+        setManteniendo(null);
         navigator.vibrate?.(30);
         onPedirBorrado(foto);
     }
 
     return (
-        <ul className={styles.tablero} aria-label="Tablero de bingo">
+        <ul
+            className={styles.tablero}
+            aria-label="Tablero de bingo"
+            style={{ "--mantener": `${MILISEGUNDOS_MANTENER}ms` } as CSSProperties}
+        >
             {categorias.map((categoria) => {
                 const fotosCelda = fotos.filter((foto) => foto.categoria === categoria);
                 const ultima = fotosCelda.at(-1);
@@ -47,11 +55,13 @@ export default function Tablero({ uuid, fotos, urlDeFoto, onAgregarFotos, onPedi
                             Mantener apretado pide borrar la última foto (RF-14) */}
                         <label
                             className={styles.boton}
+                            data-manteniendo={manteniendo === categoria || undefined}
                             onPointerDown={(evento: PointerEvent) => {
                                 seMantuvo.current = false;
                                 ultimoPuntero.current = evento.pointerType;
                                 if (!ultima || evento.pointerType === "mouse") return;
                                 cancelarPresion();
+                                setManteniendo(categoria);
                                 presion.current = {
                                     x: evento.clientX,
                                     y: evento.clientY,
