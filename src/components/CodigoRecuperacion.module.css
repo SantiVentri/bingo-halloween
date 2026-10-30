@@ -1,0 +1,38 @@
+.codigoRecuperacion {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.aviso {
+    line-height: 1.4;
+}
+
+/* user-select: all para copiarlo entero de un toque si el portapapeles no anda */
+.codigo {
+    padding: 12px;
+    border: 2px dashed var(--color-calabaza);
+    border-radius: 8px;
+    font-family: var(--font-geist-mono), monospace;
+    font-size: 15px;
+    text-align: center;
+    overflow-wrap: anywhere;
+    user-select: all;
+    -webkit-user-select: all;
+}
+
+.boton {
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    background-color: var(--color-calabaza);
+    color: var(--color-texto);
+    font: inherit;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.ayuda {
+    font-size: 14px;
+    color: var(--color-hueso);
+}

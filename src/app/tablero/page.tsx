@@ -1,20 +1,9 @@
 import { Suspense } from "react";
 import Image from "next/image";
 import styles from "./page.module.css";
-import Tablero from "@/components/Tablero";
-import { UUID_DEMO } from "@/lib/tablero";
+import TableroDelJugador from "@/components/TableroDelJugador";
 
-type SearchParams = PageProps<"/tablero">["searchParams"];
-
-// Hasta el Sprint 2 el UUID se pasa por query param: /tablero?id=<uuid>
-async function TableroDelJugador({ searchParams }: { searchParams: SearchParams }) {
-    const { id } = await searchParams;
-    const uuid = (Array.isArray(id) ? id[0] : id) || UUID_DEMO;
-
-    return <Tablero uuid={uuid} />;
-}
-
-export default function TableroPage({ searchParams }: PageProps<"/tablero">) {
+export default function TableroPage() {
     return (
         <div className={styles.page}>
             <main className={styles.poster}>
@@ -25,11 +14,10 @@ export default function TableroPage({ searchParams }: PageProps<"/tablero">) {
                     preload
                     className={styles.imagen}
                 />
-                <div className={styles.grilla}>
-                    <Suspense>
-                        <TableroDelJugador searchParams={searchParams} />
-                    </Suspense>
-                </div>
+                {/* El jugador vive en localStorage: esta parte se dibuja solo en el navegador */}
+                <Suspense>
+                    <TableroDelJugador />
+                </Suspense>
             </main>
         </div>
     )

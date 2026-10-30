@@ -5,10 +5,13 @@
     min-height: 100dvh;
 }
 
-.link {
-    background-color: var(--color-sangre);
-    color: var(--color-texto);
-    padding: 15px 80px;
-    border-radius: 10px;
-    font-weight: bold;
+.main {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    padding: 16px;
+}
+
+.cargando {
+    color: var(--color-hueso);
 }
