@@ -4,13 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { generarUuid } from "@/lib/jugador";
 import { borrarFoto, guardarFoto, listarFotos, obtenerFoto, type Foto } from "@/lib/fotos";
 import { comprimirImagen, TAMANO_MAXIMO } from "@/lib/imagenes";
-import { subirFoto } from "@/lib/subidas";
-import { borrarFotoSubida } from "@/lib/acciones";
+import { borrarFotoSubida, subirFoto } from "@/lib/subidas";
 
 const AVISO_FALLA = "Algunas fotos no se pudieron subir. Quedaron guardadas para reintentar.";
-
-// Tiempo para deshacer antes de borrar de verdad (RF-29)
-export const SEGUNDOS_DESHACER = 5;
+const AVISO_MANTENER = "Tip: mantené apretada una celda para borrar su última foto.";
 
 type UsoFotos = {
     fotos: Foto[];
@@ -19,9 +16,7 @@ type UsoFotos = {
     agregarFotos: (categoria: string, archivos: File[]) => Promise<void>;
     reintentar: () => void;
     urlDeFoto: (foto: Foto) => string;
-    porBorrar: Foto | null;
-    eliminarFoto: (foto: Foto) => void;
-    deshacerBorrado: () => void;
+    eliminarFoto: (foto: Foto) => Promise<boolean>;
 };
 
 // Fotos del jugador: se guardan primero en IndexedDB, se muestran al instante
@@ -32,8 +27,6 @@ export function useFotos(uuid: string): UsoFotos {
     const [aviso, setAviso] = useState("");
     const enCurso = useRef(false);
     const urlsLocales = useRef(new Map<string, string>());
-    const [porBorrar, setPorBorrar] = useState<Foto | null>(null);
-    const borradoEnEspera = useRef<{ foto: Foto; temporizador: number } | null>(null);
     // Fotos ya borradas: si alguna terminaba de subirse justo después, se borra también de la nube
     const eliminadas = useRef(new Set<string>());
 
@@ -87,59 +80,29 @@ export function useFotos(uuid: string): UsoFotos {
         }
     }, [uuid]);
 
-    // Borra de verdad: del celular y, si ya estaba subida, de UploadThing (RF-14)
-    const confirmarBorrado = useCallback(async (foto: Foto) => {
-        eliminadas.current.add(foto.id);
+    // Borra primero de UploadThing y después del celular (RF-14). Si la nube falla,
+    // la foto se queda para que se pueda volver a intentar y no quede huérfana
+    async function eliminarFoto(foto: Foto): Promise<boolean> {
+        try {
+            // Se relee porque pudo haberse subido después de dibujar la celda
+            const url = (await obtenerFoto(foto.id))?.url ?? foto.url;
+            if (url && !(await borrarFotoSubida(uuid, url))) throw new Error("UploadThing no la borró");
+            // Si se estaba subiendo justo ahora, la cola la borra de la nube al terminar
+            eliminadas.current.add(foto.id);
+            await borrarFoto(foto.id);
+        } catch {
+            setAviso("No se pudo borrar la foto. Revisá la conexión y probá de nuevo.");
+            return false;
+        }
         setFotos((anteriores) => anteriores.filter((otra) => otra.id !== foto.id));
         const urlLocal = urlsLocales.current.get(foto.id);
         if (urlLocal) {
             URL.revokeObjectURL(urlLocal);
             urlsLocales.current.delete(foto.id);
         }
-        try {
-            // Se relee porque pudo haberse subido durante la espera
-            const url = (await obtenerFoto(foto.id))?.url ?? foto.url;
-            await borrarFoto(foto.id);
-            if (url && !(await borrarFotoSubida(uuid, url))) throw new Error("No se borró de UploadThing");
-        } catch {
-            setAviso("La foto se borró de tu tablero, pero no se pudo borrar de la nube.");
-        }
-    }, [uuid]);
-
-    // La foto desaparece al instante y queda unos segundos para deshacer (RF-29)
-    function eliminarFoto(foto: Foto) {
-        const anterior = borradoEnEspera.current;
-        if (anterior) {
-            window.clearTimeout(anterior.temporizador);
-            confirmarBorrado(anterior.foto);
-        }
-        const temporizador = window.setTimeout(() => {
-            borradoEnEspera.current = null;
-            setPorBorrar(null);
-            confirmarBorrado(foto);
-        }, SEGUNDOS_DESHACER * 1000);
-        borradoEnEspera.current = { foto, temporizador };
-        setPorBorrar(foto);
+        setAviso((anterior) => (anterior === AVISO_MANTENER ? "" : anterior));
+        return true;
     }
-
-    function deshacerBorrado() {
-        const enEspera = borradoEnEspera.current;
-        if (!enEspera) return;
-        window.clearTimeout(enEspera.temporizador);
-        borradoEnEspera.current = null;
-        setPorBorrar(null);
-    }
-
-    // Si se sale del tablero durante la espera, el borrado se confirma
-    useEffect(() => {
-        return () => {
-            const enEspera = borradoEnEspera.current;
-            if (!enEspera) return;
-            window.clearTimeout(enEspera.temporizador);
-            borradoEnEspera.current = null;
-            confirmarBorrado(enEspera.foto);
-        };
-    }, [confirmarBorrado]);
 
     // Carga las fotos guardadas e intenta subir las que quedaron pendientes
     useEffect(() => {
@@ -183,7 +146,8 @@ export function useFotos(uuid: string): UsoFotos {
     }, []);
 
     async function agregarFotos(categoria: string, archivos: File[]) {
-        setAviso("");
+        // Con la primera foto se explica cómo borrar
+        setAviso(fotos.length === 0 ? AVISO_MANTENER : "");
         // Pide que el navegador no borre las fotos guardadas (NF-05)
         navigator.storage?.persist?.().catch(() => { });
 
@@ -223,14 +187,12 @@ export function useFotos(uuid: string): UsoFotos {
     }
 
     return {
-        fotos: porBorrar ? fotos.filter((foto) => foto.id !== porBorrar.id) : fotos,
+        fotos,
         subiendo,
         aviso,
         agregarFotos,
         reintentar: subirPendientes,
         urlDeFoto,
-        porBorrar,
         eliminarFoto,
-        deshacerBorrado,
     };
 }

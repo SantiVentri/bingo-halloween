@@ -6,9 +6,9 @@ import { redirect } from "next/navigation";
 import styles from "./TableroDelJugador.module.css";
 import Tablero from "@/components/Tablero";
 import Respaldo from "@/components/Respaldo";
-import GaleriaCelda from "@/components/GaleriaCelda";
-import AvisoDeshacer from "@/components/AvisoDeshacer";
+import ConfirmarBorrado from "@/components/ConfirmarBorrado";
 import { obtenerJugador, type Jugador } from "@/lib/jugador";
+import type { Foto } from "@/lib/fotos";
 import { generarTablero } from "@/lib/tablero";
 import { useFotos } from "@/hooks/useFotos";
 
@@ -32,13 +32,10 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
         agregarFotos,
         reintentar,
         urlDeFoto,
-        porBorrar,
         eliminarFoto,
-        deshacerBorrado,
     } = useFotos(jugador.uuid);
-    const [celdaAbierta, setCeldaAbierta] = useState<string | null>(null);
+    const [porBorrar, setPorBorrar] = useState<Foto | null>(null);
     const pendientes = fotos.filter((foto) => foto.estado === "pendiente").length;
-    const avisoDeshacer = <AvisoDeshacer foto={porBorrar} onDeshacer={deshacerBorrado} />;
     const completas = generarTablero(jugador.uuid)
         .filter((categoria) => fotos.some((foto) => foto.categoria === categoria)).length;
 
@@ -71,19 +68,16 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
                     fotos={fotos}
                     urlDeFoto={urlDeFoto}
                     onAgregarFotos={agregarFotos}
-                    onAbrirCelda={setCeldaAbierta}
+                    onPedirBorrado={setPorBorrar}
                 />
             </div>
-            <GaleriaCelda
-                categoria={celdaAbierta}
-                fotos={fotos.filter((foto) => foto.categoria === celdaAbierta)}
+            <ConfirmarBorrado
+                foto={porBorrar}
+                fotosEnCelda={fotos.filter((foto) => foto.categoria === porBorrar?.categoria).length}
                 urlDeFoto={urlDeFoto}
-                onAgregarFotos={agregarFotos}
-                onEliminarFoto={eliminarFoto}
-                onCerrar={() => setCeldaAbierta(null)}
-                aviso={celdaAbierta && avisoDeshacer}
+                onConfirmar={eliminarFoto}
+                onCerrar={() => setPorBorrar(null)}
             />
-            {!celdaAbierta && avisoDeshacer}
             <p className={styles.aviso} role="status">{aviso}</p>
         </>
     );
