@@ -11,30 +11,31 @@ import {
     crearJugador,
     esCodigoValido,
     obtenerJugador,
+    recuperarJugador,
     type Jugador,
 } from "@/lib/jugador";
-import { importarFotos } from "@/lib/fotos";
-import { guardarCambios } from "@/lib/cambios";
-import { fotosDelRespaldo, leerRespaldo } from "@/lib/respaldo";
 
 // seguir: ya hay jugador en este dispositivo · nuevo: primer ingreso
 // recuperar: "Ya tengo código" · codigo: recién creado, se muestra el código una vez
 type Paso = "seguir" | "nuevo" | "recuperar" | "codigo";
 
-// Ingreso sin login (RF-01, RF-24) y recuperación del tablero con el código (RF-03) o el respaldo (RF-22)
+// Ingreso sin login (RF-01, RF-24) y recuperación del tablero con el código (RF-03)
 export default function Ingreso() {
     use(browser("El jugador se guarda en localStorage"));
 
     const [jugador, setJugador] = useState<Jugador | null>(obtenerJugador);
     const [paso, setPaso] = useState<Paso>(jugador ? "seguir" : "nuevo");
+    // El código se muestra una sola vez, al crear el jugador
+    const [codigo, setCodigo] = useState("");
     const [error, setError] = useState("");
+    const [enviando, setEnviando] = useState(false);
 
     function cambiarPaso(siguiente: Paso) {
         setError("");
         setPaso(siguiente);
     }
 
-    function ingresar(evento: FormEvent<HTMLFormElement>) {
+    async function ingresar(evento: FormEvent<HTMLFormElement>) {
         evento.preventDefault();
         const datos = new FormData(evento.currentTarget);
         const nombre = String(datos.get("nombre") ?? "").trim();
@@ -42,37 +43,41 @@ export default function Ingreso() {
             setError("Escribí tu nombre para entrar.");
             return;
         }
-        setJugador(crearJugador(nombre));
-        cambiarPaso("codigo");
+        setEnviando(true);
+        try {
+            const creado = await crearJugador(nombre);
+            setJugador(creado.jugador);
+            setCodigo(creado.codigo);
+            cambiarPaso("codigo");
+        } catch {
+            setError("No se pudo entrar. Revisá la conexión y probá de nuevo.");
+        } finally {
+            setEnviando(false);
+        }
     }
 
     async function recuperar(evento: FormEvent<HTMLFormElement>) {
         evento.preventDefault();
         const datos = new FormData(evento.currentTarget);
         const texto = String(datos.get("codigo") ?? "");
-        const respaldo = leerRespaldo(texto);
-        const codigo = respaldo?.uuid ?? texto;
-        const nombre = String(datos.get("nombre") ?? "").trim() || respaldo?.nombre || "";
-        if (!esCodigoValido(codigo)) {
+        if (!esCodigoValido(texto)) {
             setError("Ese código no es válido. Revisá que esté completo, con los guiones.");
             return;
         }
-        if (!nombre) {
-            setError("Escribí tu nombre para entrar.");
-            return;
-        }
-        if (respaldo) {
-            try {
-                await importarFotos(respaldo.uuid, fotosDelRespaldo(respaldo));
-                // Sin cambios en el respaldo se conservan los que ya hubiera en este dispositivo
-                if (respaldo.cambios.length > 0) guardarCambios(respaldo.uuid, respaldo.cambios);
-            } catch {
-                setError("No se pudieron guardar las fotos del respaldo en este dispositivo.");
+        setEnviando(true);
+        try {
+            const recuperado = await recuperarJugador(texto);
+            if (!recuperado) {
+                setError("No encontramos un tablero con ese código.");
                 return;
             }
+            setJugador(recuperado);
+            cambiarPaso("seguir");
+        } catch {
+            setError("No se pudo recuperar. Revisá la conexión y probá de nuevo.");
+        } finally {
+            setEnviando(false);
         }
-        setJugador(crearJugador(nombre, codigo));
-        cambiarPaso("seguir");
     }
 
     if (paso === "seguir" && jugador) {
@@ -101,7 +106,7 @@ export default function Ingreso() {
                         si cambiás de celular o se borran los datos, es la única forma de recuperar tu tablero.
                     </p>
                 </div>
-                <CodigoRecuperacion codigo={jugador.uuid} />
+                <CodigoRecuperacion codigo={codigo} />
                 <Boton href="/tablero" anchoCompleto>Ya lo guardé, ir al tablero</Boton>
             </div>
         );
@@ -112,43 +117,32 @@ export default function Ingreso() {
             <form key="recuperar" className={styles.ingreso} onSubmit={recuperar} noValidate>
                 <div className={styles.encabezado}>
                     <h1 className={styles.titulo}>Recuperar mi tablero</h1>
-                    <p className={styles.bajada}>Pegá tu código o el respaldo completo que copiaste en el otro celular.</p>
+                    <p className={styles.bajada}>Pegá el código que guardaste: se recuperan tu tablero y tus fotos.</p>
                 </div>
                 {jugador && (
                     <p className={styles.advertencia}>
                         <TriangleAlert aria-hidden="true" />
                         <span>
-                            Esto reemplaza el tablero de {jugador.nombre} en este celular.
-                            Guardá su código antes si lo vas a necesitar.
+                            Este celular deja de mostrar el tablero de {jugador.nombre}.
+                            Si lo vas a necesitar, guardá su código antes (está en el menú, en Respaldo).
                         </span>
                     </p>
                 )}
                 <label className={styles.campo}>
-                    <span className={styles.etiqueta}>Código o respaldo</span>
-                    <textarea
+                    <span className={styles.etiqueta}>Código de recuperación</span>
+                    <input
                         name="codigo"
                         className={`${styles.input} ${styles.areaCodigo}`}
-                        rows={3}
                         autoComplete="off"
                         autoCapitalize="off"
                         spellCheck={false}
                         placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
                     />
-                    <span className={styles.ayuda}>Con el respaldo completo también se recuperan tus fotos.</span>
-                </label>
-                <label className={styles.campo}>
-                    <span className={styles.etiqueta}>Tu nombre</span>
-                    <input
-                        name="nombre"
-                        className={styles.input}
-                        maxLength={LARGO_MAXIMO_NOMBRE}
-                        autoComplete="given-name"
-                        defaultValue={jugador?.nombre}
-                    />
-                    {!jugador && <span className={styles.ayuda}>Si pegaste el respaldo, podés dejarlo vacío.</span>}
                 </label>
                 {error && <p className={styles.error} role="alert">{error}</p>}
-                <Boton type="submit" anchoCompleto>Recuperar tablero</Boton>
+                <Boton type="submit" anchoCompleto disabled={enviando}>
+                    {enviando ? "Recuperando…" : "Recuperar tablero"}
+                </Boton>
                 <Boton
                     variante="fantasma"
                     anchoCompleto
@@ -180,7 +174,7 @@ export default function Ingreso() {
                 />
             </label>
             {error && <p className={styles.error} role="alert">{error}</p>}
-            <Boton type="submit" anchoCompleto>Empezar</Boton>
+            <Boton type="submit" anchoCompleto disabled={enviando}>{enviando ? "Entrando…" : "Empezar"}</Boton>
             <div className={styles.separador}><span>¿Ya jugaste en otro celular?</span></div>
             <Boton variante="secundario" anchoCompleto onClick={() => cambiarPaso("recuperar")}>
                 Ya tengo código

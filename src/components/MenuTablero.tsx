@@ -69,8 +69,8 @@ export default function MenuTablero({
             <ul className={styles.opciones}>
                 <Opcion
                     icono={<LifeBuoy />}
-                    titulo="Respaldo"
-                    detalle="Tu código y el respaldo de tus fotos"
+                    titulo="Código de recuperación"
+                    detalle="Para seguir con tu tablero en otro celular"
                     onElegir={() => elegir(onRespaldo)}
                 />
                 <Opcion

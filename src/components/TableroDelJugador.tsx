@@ -3,7 +3,7 @@
 import { use, useState, type ReactNode } from "react";
 import { browser } from "react-dom";
 import { useRouter } from "next/navigation";
-import { CloudUpload, Dices, Ellipsis, Hand, Lock, PartyPopper, RefreshCw } from "lucide-react";
+import { CloudUpload, Dices, Ellipsis, Hand, Lock, PartyPopper, RefreshCw, UserX } from "lucide-react";
 import styles from "./TableroDelJugador.module.css";
 import SinJugador from "@/components/SinJugador";
 import MarcoTablero from "@/components/MarcoTablero";
@@ -13,15 +13,14 @@ import Respaldo from "@/components/Respaldo";
 import ConfirmarBorrado from "@/components/ConfirmarBorrado";
 import Confirmacion from "@/components/Confirmacion";
 import Boton from "@/components/ui/Boton";
+import PantallaMensaje from "@/components/ui/PantallaMensaje";
 import { useAvisos } from "@/components/Avisos";
-import { obtenerJugador, type Jugador } from "@/lib/jugador";
+import { obtenerJugador, olvidarJugador, type Jugador } from "@/lib/jugador";
 import type { Foto } from "@/lib/fotos";
-import { CAMBIOS_MAXIMOS, generarTablero, sortearCategoria } from "@/lib/tablero";
-import { guardarEleccion } from "@/lib/eleccion";
-import { guardarCambios } from "@/lib/cambios";
-import { retirarEntrega } from "@/lib/entrega";
+import { CAMBIOS_MAXIMOS, generarTablero } from "@/lib/tablero";
+import { cambiarCategoria as cambiarCategoriaRemota, reabrirTablero } from "@/lib/tableroRemoto";
 import { useFotos } from "@/hooks/useFotos";
-import { useCambios, useEleccion } from "@/hooks/useAlmacen";
+import { useTableroRemoto } from "@/hooks/useTableroRemoto";
 
 // Lee el jugador de localStorage; sin jugador ofrece volver al ingreso (RF-02)
 export default function TableroDelJugador() {
@@ -38,13 +37,13 @@ export default function TableroDelJugador() {
 }
 
 function TableroConFotos({ jugador }: { jugador: Jugador }) {
-    const { fotos, subiendo, agregarFotos, reintentar, urlDeFoto, eliminarFoto, eliminarTodas } = useFotos(jugador.uuid);
+    const { fotos, subiendo, agregarFotos, reintentar, urlDeFoto, eliminarFoto, eliminarTodas } = useFotos(jugador.id);
     const avisar = useAvisos();
     const router = useRouter();
-    // La elección y los cambios se leen de localStorage en cada render: así se
-    // actualizan aunque Next haya dejado esta pantalla oculta al navegar
-    const eleccion = useEleccion(jugador.uuid);
-    const cambios = useCambios(jugador.uuid);
+    // Cambios, elección y entrega vienen de la base y se actualizan en vivo
+    const { estado, recargar } = useTableroRemoto(jugador.id);
+    const tablero = estado.tipo === "listo" ? estado.tablero : null;
+    const cambios = tablero?.cambios ?? [];
 
     const [menuAbierto, setMenuAbierto] = useState(false);
     const [respaldoAbierto, setRespaldoAbierto] = useState(false);
@@ -59,41 +58,70 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
         { posicion: number; categoria: string; cantidadFotos: number; restantes: number } | null
     >(null);
 
-    const cerrado = eleccion.confirmadaEn !== null;
-    const categorias = generarTablero(jugador.uuid, cambios);
+    const cerrado = Boolean(tablero?.entregadoEn);
+    const categorias = generarTablero(jugador.id, cambios);
     const cambiosRestantes = CAMBIOS_MAXIMOS - cambios.length;
     const pendientes = fotos.filter((foto) => foto.estado === "pendiente").length;
     const completas = categorias
         .filter((categoria) => fotos.some((foto) => foto.categoria === categoria)).length;
     const fotosACambiar = fotos.filter((foto) => foto.categoria === aCambiar?.categoria);
 
-    // Primero borra las fotos de la celda (del celular y de UploadThing); si alguna
-    // falla, la categoría no cambia y el aviso de error ya lo dio el borrado
+    // Las fotos de la celda que todavía no subieron se borran acá; las subidas y el
+    // sorteo de la categoría nueva los hace el servidor
     async function cambiarCategoria() {
         if (!aCambiar) return;
-        for (const foto of fotosACambiar) {
+        for (const foto of fotosACambiar.filter((foto) => foto.estado === "pendiente")) {
             if (!(await eliminarFoto(foto))) return;
         }
-        const nueva = sortearCategoria(jugador.uuid, cambios);
-        guardarCambios(jugador.uuid, [...cambios, { posicion: aCambiar.posicion, categoria: nueva }]);
-        setModoCambio(false);
-        avisar({ tipo: "exito", texto: `«${aCambiar.categoria}» ahora es «${nueva}»` });
+        try {
+            const nueva = await cambiarCategoriaRemota(jugador.id, aCambiar.posicion);
+            setModoCambio(false);
+            avisar({ tipo: "exito", texto: `«${aCambiar.categoria}» ahora es «${nueva}»` });
+        } catch {
+            avisar({ tipo: "error", texto: "No se pudo cambiar la categoría. Revisá la conexión y probá de nuevo." });
+        }
+        await recargar();
     }
 
-    // Borra todas las fotos y la elección; las categorías y los cambios se mantienen
+    // Borra todas las fotos (y con ellas la elección); las categorías y los cambios se mantienen
     async function borrarTodo() {
         if (!(await eliminarTodas())) return;
-        guardarEleccion(jugador.uuid, { elegidas: {}, confirmadaEn: null });
         avisar({ tipo: "exito", texto: "Se borraron todas las fotos del tablero." });
+        await recargar();
     }
 
-    // Al reabrir, la entrega sale de la revisión hasta que se vuelva a cerrar
+    // Al reabrir, el tablero sale de la revisión hasta que se vuelva a entregar
     async function reabrir() {
-        if (!(await retirarEntrega(jugador.uuid))) {
+        try {
+            await reabrirTablero(jugador.id);
+        } catch {
             avisar({ tipo: "error", texto: "No se pudo reabrir. Revisá la conexión y probá de nuevo." });
-            return;
         }
-        guardarEleccion(jugador.uuid, { ...eleccion, confirmadaEn: null });
+        await recargar();
+    }
+
+    // Este navegador perdió la sesión con la que entró: hay que volver a entrar con el código
+    if (estado.tipo === "sinAcceso") {
+        return (
+            <PantallaMensaje
+                icono={<UserX />}
+                titulo="Este celular perdió el acceso"
+                texto="Volvé a entrar con tu código de recuperación para seguir con tu tablero."
+                accion={
+                    <Boton onClick={() => {
+                        olvidarJugador();
+                        router.push("/");
+                    }}>
+                        Ir al inicio
+                    </Boton>
+                }
+            />
+        );
+    }
+
+    // Hasta saber los cambios de categoría no se dibuja la grilla (evita mostrar categorías viejas)
+    if (!tablero) {
+        return <MarcoTablero />;
     }
 
     const barra = (
@@ -164,7 +192,7 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
                         urlDeFoto={urlDeFoto}
                         onAgregarFotos={agregarFotos}
                         onPedirBorrado={setPorBorrar}
-                        elegidas={cerrado ? eleccion.elegidas : undefined}
+                        elegidas={cerrado ? tablero.elegidas : undefined}
                         onElegirCambio={modoCambio && !cerrado
                             ? (posicion) => setACambiar({
                                 posicion,
@@ -197,9 +225,7 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
             <Respaldo
                 abierto={respaldoAbierto}
                 onCerrar={() => setRespaldoAbierto(false)}
-                jugador={jugador}
-                fotos={fotos}
-                cambios={cambios}
+                jugadorId={jugador.id}
             />
             <ConfirmarBorrado
                 foto={porBorrar}

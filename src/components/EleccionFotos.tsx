@@ -13,11 +13,11 @@ import Boton from "@/components/ui/Boton";
 import { useAvisos } from "@/components/Avisos";
 import { obtenerJugador, type Jugador } from "@/lib/jugador";
 import { generarTablero } from "@/lib/tablero";
-import { completarElegidas, guardarEleccion } from "@/lib/eleccion";
-import { enviarEntrega } from "@/lib/entrega";
+import { completarElegidas } from "@/lib/eleccion";
+import { entregarTablero, guardarElegidas } from "@/lib/tableroRemoto";
 import type { Foto } from "@/lib/fotos";
 import { useFotos } from "@/hooks/useFotos";
-import { useCambios, useEleccion } from "@/hooks/useAlmacen";
+import { useTableroRemoto } from "@/hooks/useTableroRemoto";
 
 // Elección de la foto final de cada celda, paso a paso (RF-16, RF-17, RF-26)
 export default function EleccionFotos() {
@@ -39,17 +39,21 @@ type Vista = { tipo: "paso"; categoria: string; desdeResumen: boolean } | { tipo
 function Eleccion({ jugador }: { jugador: Jugador }) {
     const router = useRouter();
     const avisar = useAvisos();
-    const { fotos, cargando, subiendo, reintentar, urlDeFoto } = useFotos(jugador.uuid);
-    // Se leen de localStorage en cada render: así se actualizan aunque Next
-    // haya dejado esta pantalla oculta al navegar
-    const eleccion = useEleccion(jugador.uuid);
-    const cambios = useCambios(jugador.uuid);
+    const { fotos, cargando, subiendo, reintentar, urlDeFoto } = useFotos(jugador.id);
+    // Cambios, elección y entrega vienen de la base
+    const { estado } = useTableroRemoto(jugador.id);
+    // Elecciones hechas acá que todavía no se guardaron (fotos sin subir)
+    const [elegidasLocales, setElegidasLocales] = useState<Record<string, string>>({});
     const [vista, setVista] = useState<Vista | null>(null);
     const [confirmando, setConfirmando] = useState(false);
 
+    if (estado.tipo === "sinAcceso") {
+        return <SinJugador />;
+    }
+
     // Con el tablero ya cerrado no hay nada que elegir. No se redirige: el router
     // recordaría la redirección y la repetiría después de reabrir el tablero
-    if (eleccion.confirmadaEn) {
+    if (estado.tipo === "listo" && estado.tablero.entregadoEn) {
         return (
             <PantallaMensaje
                 icono={<Lock />}
@@ -60,11 +64,12 @@ function Eleccion({ jugador }: { jugador: Jugador }) {
         );
     }
 
-    if (cargando) {
+    if (cargando || estado.tipo !== "listo") {
         return <p className={styles.cargando} role="status">Cargando tus fotos…</p>;
     }
 
-    const categorias: readonly string[] = generarTablero(jugador.uuid, cambios);
+    const { tablero } = estado;
+    const categorias: readonly string[] = generarTablero(jugador.id, tablero.cambios);
     const fotosDe = (categoria: string) => fotos.filter((foto) => foto.categoria === categoria);
     const completas = categorias.filter((categoria) => fotosDe(categoria).length > 0).length;
 
@@ -81,14 +86,17 @@ function Eleccion({ jugador }: { jugador: Jugador }) {
     }
 
     // Las celdas con una sola foto se eligen solas y se saltean
-    const elegidas = completarElegidas(categorias, fotos, eleccion.elegidas);
+    const elegidas = completarElegidas(categorias, fotos, { ...tablero.elegidas, ...elegidasLocales });
     const porElegir = categorias.filter((categoria) => fotosDe(categoria).length > 1);
     const primeraSinElegir = porElegir.find((categoria) => !elegidas[categoria]);
     const vistaActual: Vista = vista
         ?? (primeraSinElegir ? { tipo: "paso", categoria: primeraSinElegir, desdeResumen: false } : { tipo: "resumen" });
 
+    // Se guarda en la base si la foto ya subió (la elección apunta a su fila);
+    // si no, queda acá y se guarda al confirmar
     function elegir(categoria: string, foto: Foto, desdeResumen: boolean) {
-        guardarEleccion(jugador.uuid, { elegidas: { ...elegidas, [categoria]: foto.id }, confirmadaEn: null });
+        setElegidasLocales((anteriores) => ({ ...anteriores, [categoria]: foto.id }));
+        if (foto.estado === "subida") guardarElegidas(jugador.id, { [categoria]: foto.id }).catch(() => { });
         const siguiente = porElegir[porElegir.indexOf(categoria) + 1];
         setVista(!desdeResumen && siguiente
             ? { tipo: "paso", categoria: siguiente, desdeResumen: false }
@@ -124,22 +132,16 @@ function Eleccion({ jugador }: { jugador: Jugador }) {
     const sinSubir = fotosElegidas.filter((foto) => foto?.estado === "pendiente").length;
     const listas = fotosElegidas.every((foto) => foto?.estado === "subida");
 
-    // Primero se sube la entrega para la revisión del grupo; si falla, el tablero no se cierra
+    // Se guardan las 9 elegidas y se entrega; la base verifica que estén las 9.
+    // Si falla, el tablero no se cierra
     async function confirmar() {
-        const confirmadaEn = new Date().toISOString();
-        const entregada = await enviarEntrega({
-            uuid: jugador.uuid,
-            nombre: jugador.nombre,
-            confirmadaEn,
-            fotos: fotosElegidas.flatMap((foto) => (foto?.url
-                ? [{ categoria: foto.categoria, url: foto.url, capturadaEn: foto.capturadaEn, subidaEn: foto.subidaEn }]
-                : [])),
-        });
-        if (!entregada) {
+        try {
+            await guardarElegidas(jugador.id, elegidas);
+            await entregarTablero(jugador.id);
+        } catch {
             avisar({ tipo: "error", texto: "No se pudo entregar tu tablero. Revisá la conexión y probá de nuevo." });
             return;
         }
-        guardarEleccion(jugador.uuid, { elegidas, confirmadaEn });
         router.push("/tablero");
     }
 
