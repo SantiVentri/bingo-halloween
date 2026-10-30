@@ -10,9 +10,11 @@ import Carrusel from "@/components/Carrusel";
 import Confirmacion from "@/components/Confirmacion";
 import PantallaMensaje from "@/components/ui/PantallaMensaje";
 import Boton from "@/components/ui/Boton";
+import { useAvisos } from "@/components/Avisos";
 import { obtenerJugador, type Jugador } from "@/lib/jugador";
 import { generarTablero } from "@/lib/tablero";
 import { completarElegidas, guardarEleccion } from "@/lib/eleccion";
+import { enviarEntrega } from "@/lib/entrega";
 import type { Foto } from "@/lib/fotos";
 import { useFotos } from "@/hooks/useFotos";
 import { useCambios, useEleccion } from "@/hooks/useAlmacen";
@@ -36,6 +38,7 @@ type Vista = { tipo: "paso"; categoria: string; desdeResumen: boolean } | { tipo
 
 function Eleccion({ jugador }: { jugador: Jugador }) {
     const router = useRouter();
+    const avisar = useAvisos();
     const { fotos, cargando, subiendo, reintentar, urlDeFoto } = useFotos(jugador.uuid);
     // Se leen de localStorage en cada render: así se actualizan aunque Next
     // haya dejado esta pantalla oculta al navegar
@@ -121,8 +124,22 @@ function Eleccion({ jugador }: { jugador: Jugador }) {
     const sinSubir = fotosElegidas.filter((foto) => foto?.estado === "pendiente").length;
     const listas = fotosElegidas.every((foto) => foto?.estado === "subida");
 
-    function confirmar() {
-        guardarEleccion(jugador.uuid, { elegidas, confirmadaEn: new Date().toISOString() });
+    // Primero se sube la entrega para la revisión del grupo; si falla, el tablero no se cierra
+    async function confirmar() {
+        const confirmadaEn = new Date().toISOString();
+        const entregada = await enviarEntrega({
+            uuid: jugador.uuid,
+            nombre: jugador.nombre,
+            confirmadaEn,
+            fotos: fotosElegidas.flatMap((foto) => (foto?.url
+                ? [{ categoria: foto.categoria, url: foto.url, capturadaEn: foto.capturadaEn, subidaEn: foto.subidaEn }]
+                : [])),
+        });
+        if (!entregada) {
+            avisar({ tipo: "error", texto: "No se pudo entregar tu tablero. Revisá la conexión y probá de nuevo." });
+            return;
+        }
+        guardarEleccion(jugador.uuid, { elegidas, confirmadaEn });
         router.push("/tablero");
     }
 
@@ -193,9 +210,9 @@ function Eleccion({ jugador }: { jugador: Jugador }) {
             <Confirmacion
                 abierta={confirmando}
                 titulo="¿Cerrar tu tablero?"
-                texto="Te quedás con estas 9 fotos y no vas a poder subir ni borrar fotos. Si te equivocaste, podés reabrirlo antes de generar el informe."
-                accion="Cerrar tablero"
-                accionEnCurso="Cerrando…"
+                texto="Tus 9 fotos se entregan para la revisión del grupo y ya no vas a poder subir ni borrar fotos. Si te equivocaste, podés reabrirlo."
+                accion="Cerrar y entregar"
+                accionEnCurso="Entregando…"
                 onConfirmar={confirmar}
                 onCerrar={() => setConfirmando(false)}
             />
