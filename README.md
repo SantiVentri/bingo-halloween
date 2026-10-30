@@ -14,7 +14,7 @@ Pensada para un grupo cerrado de amigos y para usarse durante el fin de semana d
 
 1. **Entrar con el nombre.** No hay cuenta ni contraseña: el celular recibe un código de recuperación que conviene guardar (por ejemplo, mandándoselo por WhatsApp). Con ese código se sigue el mismo tablero desde otro celular.
 2. **Completar el tablero.** Cada jugador tiene 9 categorías al azar (siempre las mismas para su código). Tocar una celda abre la cámara o la galería; se pueden sacar varias fotos por celda.
-3. **Finalizar.** Con las 9 celdas completas aparece **¡Bingo! Finalizar**: se elige la mejor foto de cada celda y se entrega el tablero.
+3. **Finalizar.** Con las 9 celdas completas aparece **¡Bingo! Finalizar**: se elige la mejor foto de cada celda y se entrega el tablero. Después se puede compartir una imagen del tablero en redes.
 4. **Revisión del grupo.** Se juntan y abren `/revision`: marcan cada foto como **Vale** o **No vale**. Los votos se ven en vivo en todos los celulares que tengan la revisión abierta.
 5. **Ganador.** Gana quien tenga **más fotos válidas**. Si hay empate, gana quien **subió su última foto antes** (según la hora del servidor, no la del celular).
 
@@ -26,7 +26,8 @@ Pensada para un grupo cerrado de amigos y para usarse durante el fin de semana d
 - **Cambiar una categoría por otra al azar:** hasta 2 veces, sin deshacer. El sorteo lo hace el servidor.
 - **Varios celulares:** con el código, el mismo tablero se usa desde otro celular (los dos siguen funcionando y se sincronizan en vivo).
 - **Cerrar y reabrir:** al entregar, el tablero se bloquea; se puede reabrir si alguien se equivocó.
-- **Sin conexión:** la app abre y muestra el tablero y las fotos guardadas sin internet (subir, entregar y revisar sí lo necesitan).
+- **Imagen para redes:** con el tablero entregado se genera en el celular una imagen con las 9 fotos elegidas, en formato publicación (1:1) o historia (9:16), para compartirla o descargarla. Muestra siempre las fotos elegidas, sin importar lo que se vote en la revisión.
+- **Sin conexión:** la app abre y muestra el tablero y las fotos guardadas sin internet (subir, entregar y revisar sí lo necesitan; la imagen para redes también, si las fotos no están en ese celular).
 
 ## Stack
 

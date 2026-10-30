@@ -22,8 +22,8 @@ const MILISEGUNDOS_MANTENER = 550;
 const TOLERANCIA_MOVIMIENTO = 10;
 
 // Rotación de cada cartel y de su sello: fija por posición, para que no cambie al recargar
-const GIROS_CELDA = [-1.5, 1, -0.6, 1.2, -1, 0.7, 0.9, -1.3, 1];
-const GIROS_SELLO = [-9, 6, -4, 8, -7, 5, -11, 4, -6];
+export const GIROS_CELDA = [-1.5, 1, -0.6, 1.2, -1, 0.7, 0.9, -1.3, 1];
+export const GIROS_SELLO = [-9, 6, -4, 8, -7, 5, -11, 4, -6];
 
 function giroDe(posicion: number) {
     return {

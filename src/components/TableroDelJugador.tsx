@@ -10,6 +10,7 @@ import MarcoTablero from "@/components/MarcoTablero";
 import Tablero from "@/components/Tablero";
 import MenuTablero from "@/components/MenuTablero";
 import Respaldo from "@/components/Respaldo";
+import CompartirTablero from "@/components/CompartirTablero";
 import ConfirmarBorrado from "@/components/ConfirmarBorrado";
 import Confirmacion from "@/components/Confirmacion";
 import Telon from "@/components/Telon";
@@ -19,6 +20,7 @@ import PantallaMensaje from "@/components/ui/PantallaMensaje";
 import { useAvisos } from "@/components/Avisos";
 import { obtenerJugador, olvidarJugador, type Jugador } from "@/lib/jugador";
 import type { Foto } from "@/lib/fotos";
+import { armarCeldas } from "@/lib/imagenTablero";
 import { CAMBIOS_MAXIMOS, CELDAS_TABLERO, generarTablero } from "@/lib/tablero";
 import { cambiarCategoria as cambiarCategoriaRemota, reabrirTablero } from "@/lib/tableroRemoto";
 import { useFotos } from "@/hooks/useFotos";
@@ -58,6 +60,7 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
 
     const [menuAbierto, setMenuAbierto] = useState(false);
     const [respaldoAbierto, setRespaldoAbierto] = useState(false);
+    const [compartirAbierto, setCompartirAbierto] = useState(false);
     const [porBorrar, setPorBorrar] = useState<Foto | null>(null);
     const [reabriendo, setReabriendo] = useState(false);
     // Cantidad de fotos al abrir la alerta de borrar todo; null si está cerrada
@@ -76,6 +79,7 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
     const completas = categorias
         .filter((categoria) => fotos.some((foto) => foto.categoria === categoria)).length;
     const fotosACambiar = fotos.filter((foto) => foto.categoria === aCambiar?.categoria);
+    const celdasACompartir = tablero?.entregadoEn ? armarCeldas(categorias, tablero.elegidas, fotos) : null;
 
     // El telón cae solo al completar el tablero acá: si ya estaba completo al cargar, no.
     // Se compara contra el valor anterior, que recién se guarda con todo cargado
@@ -241,6 +245,8 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
                 cerrado={cerrado}
                 hayFotos={fotos.length > 0}
                 cambiosRestantes={cambiosRestantes}
+                puedeCompartir={celdasACompartir !== null}
+                onCompartir={() => setCompartirAbierto(true)}
                 onRespaldo={() => setRespaldoAbierto(true)}
                 onCambiar={() => setModoCambio(true)}
                 onBorrarTodo={() => setBorrandoTodo(fotos.length)}
@@ -251,6 +257,14 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
                 onCerrar={() => setRespaldoAbierto(false)}
                 jugadorId={jugador.id}
             />
+            {celdasACompartir && (
+                <CompartirTablero
+                    abierto={compartirAbierto}
+                    onCerrar={() => setCompartirAbierto(false)}
+                    celdas={celdasACompartir}
+                    nombre={jugador.nombre}
+                />
+            )}
             <ConfirmarBorrado
                 foto={porBorrar}
                 fotosEnCelda={fotos.filter((foto) => foto.categoria === porBorrar?.categoria).length}

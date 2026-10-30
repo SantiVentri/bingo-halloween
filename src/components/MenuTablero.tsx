@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from "react";
-import { ChevronRight, Dices, LifeBuoy, Trash2, Users } from "lucide-react";
+import { ChevronRight, Dices, LifeBuoy, Share2, Trash2, Users } from "lucide-react";
 import styles from "./MenuTablero.module.css";
 import Dialogo from "@/components/ui/Dialogo";
 
@@ -11,6 +11,9 @@ type MenuTableroProps = {
     cerrado: boolean;
     hayFotos: boolean;
     cambiosRestantes: number;
+    // Tablero entregado y con las fotos elegidas ya cargadas
+    puedeCompartir: boolean;
+    onCompartir: () => void;
     onRespaldo: () => void;
     onCambiar: () => void;
     onBorrarTodo: () => void;
@@ -54,6 +57,8 @@ export default function MenuTablero({
     cerrado,
     hayFotos,
     cambiosRestantes,
+    puedeCompartir,
+    onCompartir,
     onRespaldo,
     onCambiar,
     onBorrarTodo,
@@ -67,6 +72,15 @@ export default function MenuTablero({
     return (
         <Dialogo abierto={abierto} onCerrar={onCerrar} titulo="Opciones" variante="hoja">
             <ul className={styles.opciones}>
+                <Opcion
+                    icono={<Share2 />}
+                    titulo="Compartir mi tablero"
+                    detalle={puedeCompartir
+                        ? "Una imagen con tus fotos para tus redes"
+                        : cerrado ? "Esperando que carguen tus fotos" : "Disponible al entregar tu tablero"}
+                    deshabilitada={!puedeCompartir}
+                    onElegir={() => elegir(onCompartir)}
+                />
                 <Opcion
                     icono={<LifeBuoy />}
                     titulo="Código de recuperación"

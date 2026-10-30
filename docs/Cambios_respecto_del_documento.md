@@ -94,3 +94,16 @@ La v1.0.0 funcionaba sin base de datos (NF-07): el tablero vivía en el celular 
 - Se mantiene la cola de fotos sin subir en IndexedDB y el modo sin conexión.
 
 Con esto dejan de aplicar NF-07 (sin base de datos) y las limitaciones de la sección 5 sobre la demora de las entregas, los votos en un solo dispositivo y la elección que no viajaba en el respaldo.
+
+## 8. Imagen del tablero para redes
+
+Función agregada: con el tablero entregado, cada jugador puede generar una imagen con sus 9 fotos elegidas para compartirla en redes.
+
+- **Formatos:** publicación (1080×1080) e historia (1080×1920), en JPEG.
+- **Contenido:** logo, nombre del jugador, categoría de cada celda y sello ENCONTRADO.
+- **Se genera en el celular** con un canvas (`lib/imagenTablero.ts`), sin dependencias nuevas ni datos nuevos en la base.
+- **Compartir y descargar:** usa la hoja nativa del celular si el navegador lo permite; si no, queda Descargar.
+- **Nuevo paso al entregar:** después de confirmar ya no se va directo a `/revision`: aparece una pantalla de festejo con Compartir e Ir a la revisión.
+- **También desde el tablero entregado:** en el menú, con la opción Compartir mi tablero.
+- **No depende de la revisión:** la imagen muestra siempre las fotos elegidas, aunque el grupo marque alguna como No vale.
+- Si las fotos no están en ese celular, hace falta conexión. Si alguna no se puede cargar, no se genera una imagen incompleta: se muestra un error con Reintentar.
