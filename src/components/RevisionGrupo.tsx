@@ -7,9 +7,17 @@ import styles from "./RevisionGrupo.module.css";
 import Boton from "@/components/ui/Boton";
 import PantallaMensaje from "@/components/ui/PantallaMensaje";
 import BotonCopiar from "@/components/BotonCopiar";
-import { horaUltimaFoto, type EntregaEnRevision, type FotoEnRevision } from "@/lib/entrega";
-import { votar, type Votos } from "@/lib/votos";
-import { useVotos } from "@/hooks/useAlmacen";
+import { useAvisos } from "@/components/Avisos";
+import { supabase } from "@/lib/supabase/cliente";
+import { obtenerJugador } from "@/lib/jugador";
+import {
+    horaUltimaFoto,
+    leerRevision,
+    votar,
+    type EntregaEnRevision,
+    type FotoEnRevision,
+    type Votos,
+} from "@/lib/revision";
 
 type Fila = {
     entrega: EntregaEnRevision;
@@ -33,8 +41,8 @@ function armarRanking(entregas: EntregaEnRevision[], votos: Votos): Fila[] {
     return entregas
         .map((entrega) => ({
             entrega,
-            validas: entrega.fotos.filter((foto) => votos[foto.url] === true).length,
-            votadas: entrega.fotos.filter((foto) => votos[foto.url] !== undefined).length,
+            validas: entrega.fotos.filter((foto) => votos[foto.id] === true).length,
+            votadas: entrega.fotos.filter((foto) => votos[foto.id] !== undefined).length,
             ultimaFoto: horaUltimaFoto(entrega),
         }))
         .sort((a, b) =>
@@ -50,52 +58,71 @@ function textoResultado(ranking: Fila[], completo: boolean): string {
     return ["🎃 Resultado Bingo Halloween", ...lineas, cierre].join("\n");
 }
 
-async function pedirEntregas(): Promise<EntregaEnRevision[]> {
-    const respuesta = await fetch("/api/entregas", { cache: "no-store" });
-    if (!respuesta.ok) throw new Error("No se pudieron leer las entregas");
-    return respuesta.json();
-}
-
 type EstadoCarga =
     | { tipo: "cargando" }
     | { tipo: "error" }
-    | { tipo: "listo"; entregas: EntregaEnRevision[] };
+    | { tipo: "listo"; entregas: EntregaEnRevision[]; votos: Votos };
 
-// Revisión del grupo (reemplaza al informe PDF): se juntan, ven las entregas de
-// todos en un solo dispositivo y deciden si cada foto vale
+// Revisión del grupo (reemplaza al informe PDF): se ven las entregas de todos y se
+// decide si cada foto vale. Los votos van a la base y se ven en vivo en todos los
+// dispositivos que tengan la revisión abierta
 export default function RevisionGrupo() {
-    use(browser("Los votos se guardan en este dispositivo"));
+    use(browser("La sesión de Supabase vive en el navegador"));
 
-    const votos = useVotos();
+    const avisar = useAvisos();
     const [carga, setCarga] = useState<EstadoCarga>({ tipo: "cargando" });
     const [revisando, setRevisando] = useState<string | null>(null);
-    const [actualizando, setActualizando] = useState(false);
 
-    // Si falla una actualización, se siguen mostrando las entregas que ya había
-    const mostrarError = useCallback(() => {
-        setCarga((anterior) => (anterior.tipo === "listo" ? anterior : { tipo: "error" }));
+    // Si falla una actualización, se siguen mostrando los datos que ya había
+    const recargar = useCallback(async () => {
+        try {
+            const { entregas, votos } = await leerRevision();
+            setCarga({ tipo: "listo", entregas, votos });
+        } catch {
+            setCarga((anterior) => (anterior.tipo === "listo" ? anterior : { tipo: "error" }));
+        }
     }, []);
 
-    async function cargar() {
-        setActualizando(true);
-        try {
-            setCarga({ tipo: "listo", entregas: await pedirEntregas() });
-        } catch {
-            mostrarError();
-        } finally {
-            setActualizando(false);
-        }
-    }
-
+    // Carga inicial y actualización en vivo: votos nuevos y tableros que se entregan o reabren
     useEffect(() => {
         let vigente = true;
-        pedirEntregas()
-            .then((entregas) => vigente && setCarga({ tipo: "listo", entregas }))
-            .catch(() => vigente && mostrarError());
+        let temporizador: number | undefined;
+        leerRevision()
+            .then(({ entregas, votos }) => vigente && setCarga({ tipo: "listo", entregas, votos }))
+            .catch(() => vigente && setCarga({ tipo: "error" }));
+        const enUnRato = () => {
+            window.clearTimeout(temporizador);
+            temporizador = window.setTimeout(recargar, 300);
+        };
+        const canal = supabase()
+            .channel("revision")
+            .on("postgres_changes", { event: "*", schema: "public", table: "votos" }, enUnRato)
+            .on("postgres_changes", { event: "*", schema: "public", table: "jugadores" }, enUnRato)
+            .subscribe();
+        window.addEventListener("focus", enUnRato);
         return () => {
             vigente = false;
+            window.clearTimeout(temporizador);
+            supabase().removeChannel(canal);
+            window.removeEventListener("focus", enUnRato);
         };
-    }, [mostrarError]);
+    }, [recargar]);
+
+    // El voto se ve al instante; si la base no lo guarda, vuelve atrás
+    async function cambiarVoto(fotoId: string, vale: boolean | null) {
+        if (carga.tipo !== "listo") return;
+        const anteriores = carga.votos;
+        const nuevos = { ...anteriores };
+        if (vale === null) delete nuevos[fotoId];
+        else nuevos[fotoId] = vale;
+        setCarga({ ...carga, votos: nuevos });
+        try {
+            await votar(fotoId, vale);
+        } catch {
+            setCarga((actual) => (actual.tipo === "listo" ? { ...actual, votos: anteriores } : actual));
+            avisar({ tipo: "error", texto: "No se pudo guardar el voto. Revisá la conexión y probá de nuevo." });
+        }
+    }
 
     if (carga.tipo === "cargando") {
         return <p className={styles.cargando} role="status">Buscando las entregas…</p>;
@@ -107,19 +134,22 @@ export default function RevisionGrupo() {
                 icono={<RefreshCw />}
                 titulo="No se pudieron cargar las entregas"
                 texto="Revisá la conexión y probá de nuevo."
-                accion={<Boton onClick={cargar}>Reintentar</Boton>}
+                accion={<Boton onClick={recargar}>Reintentar</Boton>}
             />
         );
     }
 
-    const { entregas } = carga;
-    if (entregas.length === 0) {
+    const { entregas, votos } = carga;
+    // Las fotos propias no se votan: las votan los demás
+    const miId = obtenerJugador()?.id ?? null;
+    const entregue = entregas.some((entrega) => entrega.uuid === miId);
+    if (entregas.every((entrega) => entrega.uuid === miId)) {
         return (
             <PantallaMensaje
                 icono={<Ghost />}
-                titulo="Todavía nadie entregó"
-                texto="Las entregas aparecen cuando alguien cierra su tablero. Pueden tardar unos minutos en llegar."
-                accion={<Boton variante="secundario" icono={<RefreshCw />} onClick={cargar} disabled={actualizando}>{actualizando ? "Buscando…" : "Actualizar"}</Boton>}
+                titulo={entregue ? "Todavía nadie más cerró su tablero" : "Todavía nadie cerró su tablero"}
+                texto="Cuando alguien lo cierre, aparece acá para votar sus fotos."
+                accion={<Boton href="/tablero" variante="secundario">Ir a mi tablero</Boton>}
             />
         );
     }
@@ -128,12 +158,15 @@ export default function RevisionGrupo() {
     const jugador = ranking.find((fila) => fila.entrega.uuid === revisando);
     if (jugador) {
         const posicion = ranking.indexOf(jugador);
-        const siguiente = ranking.find((fila, indice) => indice !== posicion && fila.votadas < 9) ?? null;
+        const siguiente = ranking.find((fila, indice) =>
+            indice !== posicion && fila.entrega.uuid !== miId && fila.votadas < 9) ?? null;
         return (
             <RevisionJugador
                 key={jugador.entrega.uuid}
                 fila={jugador}
+                propio={jugador.entrega.uuid === miId}
                 votos={votos}
+                onVotar={cambiarVoto}
                 siguiente={siguiente}
                 onVolver={() => setRevisando(null)}
                 onSiguiente={() => setRevisando(siguiente?.entrega.uuid ?? null)}
@@ -176,9 +209,16 @@ export default function RevisionGrupo() {
                                 {posicion + 1}
                             </span>
                             <span className={styles.filaTextos}>
-                                <span className={styles.filaNombre}>{fila.entrega.nombre}</span>
+                                <span className={styles.filaNombre}>
+                                    {fila.entrega.nombre}
+                                    {fila.entrega.uuid === miId && <span className={styles.vos}>Vos</span>}
+                                </span>
                                 <span className={styles.filaDetalle}>
-                                    {fila.votadas < 9 ? `Votadas ${fila.votadas}/9` : `Última foto ${formatearHora(fila.ultimaFoto)}`}
+                                    {fila.votadas < 9
+                                        ? fila.entrega.uuid === miId
+                                            ? `Las votan los demás · ${fila.votadas}/9`
+                                            : `Votadas ${fila.votadas}/9`
+                                        : `Última foto ${formatearHora(fila.ultimaFoto)}`}
                                 </span>
                             </span>
                             <span className={styles.puntos} aria-label={`${fila.validas} de 9 válidas`}>
@@ -192,9 +232,6 @@ export default function RevisionGrupo() {
 
             <div className={styles.acciones}>
                 <BotonCopiar texto={textoResultado(ranking, completo)} etiqueta="Copiar resultado" />
-                <Boton variante="fantasma" anchoCompleto icono={<RefreshCw />} onClick={cargar} disabled={actualizando}>
-                    {actualizando ? "Buscando…" : "Buscar entregas nuevas"}
-                </Boton>
             </div>
         </div>
     );
@@ -202,14 +239,17 @@ export default function RevisionGrupo() {
 
 type RevisionJugadorProps = {
     fila: Fila;
+    // El tablero propio se ve, pero no se vota
+    propio: boolean;
     votos: Votos;
+    onVotar: (fotoId: string, vale: boolean | null) => void;
     siguiente: Fila | null;
     onVolver: () => void;
     onSiguiente: () => void;
 };
 
 // Las 9 fotos de un jugador, una abajo de la otra, con "Vale" / "No vale"
-function RevisionJugador({ fila, votos, siguiente, onVolver, onSiguiente }: RevisionJugadorProps) {
+function RevisionJugador({ fila, propio, votos, onVotar, siguiente, onVolver, onSiguiente }: RevisionJugadorProps) {
     return (
         <div className={styles.jugador}>
             <header className={styles.encabezadoJugador}>
@@ -219,14 +259,14 @@ function RevisionJugador({ fila, votos, siguiente, onVolver, onSiguiente }: Revi
                 <div className={styles.jugadorTextos}>
                     <h1 className={styles.jugadorNombre}>{fila.entrega.nombre}</h1>
                     <span className={styles.jugadorDetalle}>
-                        {fila.validas} válidas · votadas {fila.votadas}/9
+                        {propio ? "Tus fotos las votan los demás · " : ""}{fila.validas} válidas · votadas {fila.votadas}/9
                     </span>
                 </div>
             </header>
 
             <ul className={styles.fotos}>
                 {fila.entrega.fotos.map((foto) => (
-                    <FotoParaVotar key={foto.url} foto={foto} voto={votos[foto.url]} votos={votos} />
+                    <FotoParaVotar key={foto.id} foto={foto} voto={votos[foto.id]} onVotar={propio ? null : onVotar} />
                 ))}
             </ul>
 
@@ -243,37 +283,49 @@ function RevisionJugador({ fila, votos, siguiente, onVolver, onSiguiente }: Revi
     );
 }
 
-function FotoParaVotar({ foto, voto, votos }: { foto: FotoEnRevision; voto: boolean | undefined; votos: Votos }) {
-    const hora = foto.subidaServidor ?? Date.parse(foto.subidaEn ?? foto.capturadaEn);
+type FotoParaVotarProps = {
+    foto: FotoEnRevision;
+    voto: boolean | undefined;
+    // null: foto propia, solo se muestra cómo la votaron los demás
+    onVotar: ((fotoId: string, vale: boolean | null) => void) | null;
+};
+
+function FotoParaVotar({ foto, voto, onVotar }: FotoParaVotarProps) {
     return (
         <li className={styles.foto}>
-            {/* eslint-disable-next-line @next/next/no-img-element -- foto de UploadThing, sin optimizar */}
+            {/* eslint-disable-next-line @next/next/no-img-element -- foto de Supabase Storage, sin optimizar */}
             <img src={foto.url} alt={`Foto de ${foto.categoria}`} className={styles.imagen} loading="lazy" />
             <div className={styles.fotoDatos}>
                 <span className={styles.fotoCategoria}>{foto.categoria}</span>
-                {/* Sin la hora del servidor se usa la del celular, aproximada */}
-                <span className={styles.fotoHora}>
-                    {foto.subidaServidor ? "" : "≈ "}{formatearHora(hora)}
-                </span>
+                {/* Hora de subida según el servidor */}
+                <span className={styles.fotoHora}>{formatearHora(Date.parse(foto.subidaEn))}</span>
             </div>
-            <div className={styles.votacion} role="group" aria-label={`¿Vale la foto de ${foto.categoria}?`}>
-                <button
-                    type="button"
-                    className={voto === false ? `${styles.voto} ${styles.noVale}` : styles.voto}
-                    aria-pressed={voto === false}
-                    onClick={() => votar(votos, foto.url, voto === false ? null : false)}
-                >
-                    <X aria-hidden="true" /> No vale
-                </button>
-                <button
-                    type="button"
-                    className={voto === true ? `${styles.voto} ${styles.vale}` : styles.voto}
-                    aria-pressed={voto === true}
-                    onClick={() => votar(votos, foto.url, voto === true ? null : true)}
-                >
-                    <Check aria-hidden="true" /> Vale
-                </button>
-            </div>
+            {onVotar ? (
+                <div className={styles.votacion} role="group" aria-label={`¿Vale la foto de ${foto.categoria}?`}>
+                    <button
+                        type="button"
+                        className={voto === false ? `${styles.voto} ${styles.noVale}` : styles.voto}
+                        aria-pressed={voto === false}
+                        onClick={() => onVotar(foto.id, voto === false ? null : false)}
+                    >
+                        <X aria-hidden="true" /> No vale
+                    </button>
+                    <button
+                        type="button"
+                        className={voto === true ? `${styles.voto} ${styles.vale}` : styles.voto}
+                        aria-pressed={voto === true}
+                        onClick={() => onVotar(foto.id, voto === true ? null : true)}
+                    >
+                        <Check aria-hidden="true" /> Vale
+                    </button>
+                </div>
+            ) : (
+                <p className={styles.votoAjeno}>
+                    {voto === undefined
+                        ? "Todavía nadie la votó"
+                        : voto ? "Los demás dijeron que vale" : "Los demás dijeron que no vale"}
+                </p>
+            )}
         </li>
     );
 }

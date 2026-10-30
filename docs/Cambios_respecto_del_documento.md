@@ -80,3 +80,17 @@ Motivo: un informe no evita que alguien suba fotos que no corresponden. La valid
 
 - Probar en iPhone y Android reales con la URL de Vercel.
 - Después del fin de semana (NF-09): guardar el resultado, bajar las fotos que se quieran conservar y borrarlas de UploadThing.
+
+## 7. Migración a Supabase (después de la v1.0.0)
+
+La v1.0.0 funcionaba sin base de datos (NF-07): el tablero vivía en el celular y las fotos y entregas en UploadThing. Se pasó a **Supabase** para que todo quede registrado en la base:
+
+- **Identidad sin login:** cada navegador entra con un usuario anónimo de Supabase. El código de recuperación vincula otro navegador al mismo jugador; los dos siguen funcionando.
+- **Base de datos:** jugadores, códigos, celulares vinculados, fotos, cambios de categoría, elecciones y votos, con reglas de seguridad (RLS) en la base.
+- **Fotos en Storage** (bucket público, rutas imposibles de adivinar); la hora de subida la pone el servidor.
+- **Revisión en vivo:** una decisión por foto, guardada en la base y compartida entre todos los dispositivos con Realtime. Reemplaza a las entregas en JSON y a los votos en un solo dispositivo.
+- **Cambio de categoría** sorteado en el servidor (`/api/cambios`).
+- **Se eliminó** el respaldo de texto (alcanza con el código) y UploadThing.
+- Se mantiene la cola de fotos sin subir en IndexedDB y el modo sin conexión.
+
+Con esto dejan de aplicar NF-07 (sin base de datos) y las limitaciones de la sección 5 sobre la demora de las entregas, los votos en un solo dispositivo y la elección que no viajaba en el respaldo.
