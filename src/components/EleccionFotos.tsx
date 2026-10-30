@@ -142,7 +142,8 @@ function Eleccion({ jugador }: { jugador: Jugador }) {
             avisar({ tipo: "error", texto: "No se pudo entregar tu tablero. Revisá la conexión y probá de nuevo." });
             return;
         }
-        router.push("/tablero");
+        // Directo a la revisión, a ver quiénes ya cerraron y votar sus fotos
+        router.push("/revision");
     }
 
     return (
@@ -212,7 +213,7 @@ function Eleccion({ jugador }: { jugador: Jugador }) {
             <Confirmacion
                 abierta={confirmando}
                 titulo="¿Cerrar tu tablero?"
-                texto="Tus 9 fotos se entregan para la revisión del grupo y ya no vas a poder subir ni borrar fotos. Si te equivocaste, podés reabrirlo."
+                texto="Tus 9 fotos se entregan para la revisión y ya no vas a poder subir ni borrar fotos. Después vas a la revisión a votar las fotos de los demás. Si te equivocaste, podés reabrirlo desde tu tablero."
                 accion="Cerrar y entregar"
                 accionEnCurso="Entregando…"
                 onConfirmar={confirmar}

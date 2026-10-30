@@ -9,6 +9,7 @@ import PantallaMensaje from "@/components/ui/PantallaMensaje";
 import BotonCopiar from "@/components/BotonCopiar";
 import { useAvisos } from "@/components/Avisos";
 import { supabase } from "@/lib/supabase/cliente";
+import { obtenerJugador } from "@/lib/jugador";
 import {
     horaUltimaFoto,
     leerRevision,
@@ -139,12 +140,15 @@ export default function RevisionGrupo() {
     }
 
     const { entregas, votos } = carga;
-    if (entregas.length === 0) {
+    // Las fotos propias no se votan: las votan los demás
+    const miId = obtenerJugador()?.id ?? null;
+    const entregue = entregas.some((entrega) => entrega.uuid === miId);
+    if (entregas.every((entrega) => entrega.uuid === miId)) {
         return (
             <PantallaMensaje
                 icono={<Ghost />}
-                titulo="Todavía nadie entregó"
-                texto="Las entregas aparecen acá apenas alguien cierra su tablero."
+                titulo={entregue ? "Todavía nadie más cerró su tablero" : "Todavía nadie cerró su tablero"}
+                texto="Cuando alguien lo cierre, aparece acá para votar sus fotos."
                 accion={<Boton href="/tablero" variante="secundario">Ir a mi tablero</Boton>}
             />
         );
@@ -154,11 +158,13 @@ export default function RevisionGrupo() {
     const jugador = ranking.find((fila) => fila.entrega.uuid === revisando);
     if (jugador) {
         const posicion = ranking.indexOf(jugador);
-        const siguiente = ranking.find((fila, indice) => indice !== posicion && fila.votadas < 9) ?? null;
+        const siguiente = ranking.find((fila, indice) =>
+            indice !== posicion && fila.entrega.uuid !== miId && fila.votadas < 9) ?? null;
         return (
             <RevisionJugador
                 key={jugador.entrega.uuid}
                 fila={jugador}
+                propio={jugador.entrega.uuid === miId}
                 votos={votos}
                 onVotar={cambiarVoto}
                 siguiente={siguiente}
@@ -203,9 +209,16 @@ export default function RevisionGrupo() {
                                 {posicion + 1}
                             </span>
                             <span className={styles.filaTextos}>
-                                <span className={styles.filaNombre}>{fila.entrega.nombre}</span>
+                                <span className={styles.filaNombre}>
+                                    {fila.entrega.nombre}
+                                    {fila.entrega.uuid === miId && <span className={styles.vos}>Vos</span>}
+                                </span>
                                 <span className={styles.filaDetalle}>
-                                    {fila.votadas < 9 ? `Votadas ${fila.votadas}/9` : `Última foto ${formatearHora(fila.ultimaFoto)}`}
+                                    {fila.votadas < 9
+                                        ? fila.entrega.uuid === miId
+                                            ? `Las votan los demás · ${fila.votadas}/9`
+                                            : `Votadas ${fila.votadas}/9`
+                                        : `Última foto ${formatearHora(fila.ultimaFoto)}`}
                                 </span>
                             </span>
                             <span className={styles.puntos} aria-label={`${fila.validas} de 9 válidas`}>
@@ -226,6 +239,8 @@ export default function RevisionGrupo() {
 
 type RevisionJugadorProps = {
     fila: Fila;
+    // El tablero propio se ve, pero no se vota
+    propio: boolean;
     votos: Votos;
     onVotar: (fotoId: string, vale: boolean | null) => void;
     siguiente: Fila | null;
@@ -234,7 +249,7 @@ type RevisionJugadorProps = {
 };
 
 // Las 9 fotos de un jugador, una abajo de la otra, con "Vale" / "No vale"
-function RevisionJugador({ fila, votos, onVotar, siguiente, onVolver, onSiguiente }: RevisionJugadorProps) {
+function RevisionJugador({ fila, propio, votos, onVotar, siguiente, onVolver, onSiguiente }: RevisionJugadorProps) {
     return (
         <div className={styles.jugador}>
             <header className={styles.encabezadoJugador}>
@@ -244,14 +259,14 @@ function RevisionJugador({ fila, votos, onVotar, siguiente, onVolver, onSiguient
                 <div className={styles.jugadorTextos}>
                     <h1 className={styles.jugadorNombre}>{fila.entrega.nombre}</h1>
                     <span className={styles.jugadorDetalle}>
-                        {fila.validas} válidas · votadas {fila.votadas}/9
+                        {propio ? "Tus fotos las votan los demás · " : ""}{fila.validas} válidas · votadas {fila.votadas}/9
                     </span>
                 </div>
             </header>
 
             <ul className={styles.fotos}>
                 {fila.entrega.fotos.map((foto) => (
-                    <FotoParaVotar key={foto.id} foto={foto} voto={votos[foto.id]} onVotar={onVotar} />
+                    <FotoParaVotar key={foto.id} foto={foto} voto={votos[foto.id]} onVotar={propio ? null : onVotar} />
                 ))}
             </ul>
 
@@ -271,37 +286,46 @@ function RevisionJugador({ fila, votos, onVotar, siguiente, onVolver, onSiguient
 type FotoParaVotarProps = {
     foto: FotoEnRevision;
     voto: boolean | undefined;
-    onVotar: (fotoId: string, vale: boolean | null) => void;
+    // null: foto propia, solo se muestra cómo la votaron los demás
+    onVotar: ((fotoId: string, vale: boolean | null) => void) | null;
 };
 
 function FotoParaVotar({ foto, voto, onVotar }: FotoParaVotarProps) {
     return (
         <li className={styles.foto}>
-            {/* eslint-disable-next-line @next/next/no-img-element -- foto de UploadThing, sin optimizar */}
+            {/* eslint-disable-next-line @next/next/no-img-element -- foto de Supabase Storage, sin optimizar */}
             <img src={foto.url} alt={`Foto de ${foto.categoria}`} className={styles.imagen} loading="lazy" />
             <div className={styles.fotoDatos}>
                 <span className={styles.fotoCategoria}>{foto.categoria}</span>
                 {/* Hora de subida según el servidor */}
                 <span className={styles.fotoHora}>{formatearHora(Date.parse(foto.subidaEn))}</span>
             </div>
-            <div className={styles.votacion} role="group" aria-label={`¿Vale la foto de ${foto.categoria}?`}>
-                <button
-                    type="button"
-                    className={voto === false ? `${styles.voto} ${styles.noVale}` : styles.voto}
-                    aria-pressed={voto === false}
-                    onClick={() => onVotar(foto.id, voto === false ? null : false)}
-                >
-                    <X aria-hidden="true" /> No vale
-                </button>
-                <button
-                    type="button"
-                    className={voto === true ? `${styles.voto} ${styles.vale}` : styles.voto}
-                    aria-pressed={voto === true}
-                    onClick={() => onVotar(foto.id, voto === true ? null : true)}
-                >
-                    <Check aria-hidden="true" /> Vale
-                </button>
-            </div>
+            {onVotar ? (
+                <div className={styles.votacion} role="group" aria-label={`¿Vale la foto de ${foto.categoria}?`}>
+                    <button
+                        type="button"
+                        className={voto === false ? `${styles.voto} ${styles.noVale}` : styles.voto}
+                        aria-pressed={voto === false}
+                        onClick={() => onVotar(foto.id, voto === false ? null : false)}
+                    >
+                        <X aria-hidden="true" /> No vale
+                    </button>
+                    <button
+                        type="button"
+                        className={voto === true ? `${styles.voto} ${styles.vale}` : styles.voto}
+                        aria-pressed={voto === true}
+                        onClick={() => onVotar(foto.id, voto === true ? null : true)}
+                    >
+                        <Check aria-hidden="true" /> Vale
+                    </button>
+                </div>
+            ) : (
+                <p className={styles.votoAjeno}>
+                    {voto === undefined
+                        ? "Todavía nadie la votó"
+                        : voto ? "Los demás dijeron que vale" : "Los demás dijeron que no vale"}
+                </p>
+            )}
         </li>
     );
 }
