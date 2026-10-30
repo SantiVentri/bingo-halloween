@@ -24,9 +24,13 @@
     padding: 4%;
     text-align: center;
     overflow: hidden;
+    border: none;
+    background: none;
+    font: inherit;
     cursor: pointer;
 }
 
+.boton:focus-visible,
 .boton:focus-within {
     outline: 0.8cqw solid var(--color-calabaza);
     outline-offset: -0.8cqw;

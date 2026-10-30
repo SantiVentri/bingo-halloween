@@ -1,0 +1,47 @@
+.aviso {
+    inset: auto 0 calc(24px + env(safe-area-inset-bottom));
+    margin: 0 auto;
+    width: min(100% - 32px, 420px);
+    padding: 12px 12px 12px 16px;
+    border: 2px solid var(--color-calabaza);
+    border-radius: 12px;
+    background-color: var(--color-fondo);
+    color: var(--color-texto);
+    font-weight: bold;
+    overflow: hidden;
+}
+
+.aviso:popover-open {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.deshacer {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    background-color: var(--color-calabaza);
+    color: var(--color-texto);
+    font: inherit;
+    cursor: pointer;
+}
+
+/* Barra que se vacía mientras se puede deshacer */
+.tiempo {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 4px;
+    width: 100%;
+    background-color: var(--color-calabaza);
+    transform-origin: left;
+    animation: vaciar linear forwards;
+}
+
+@keyframes vaciar {
+    to {
+        transform: scaleX(0);
+    }
+}
