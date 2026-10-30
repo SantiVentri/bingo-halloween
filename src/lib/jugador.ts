@@ -23,7 +23,7 @@ export function esCodigoValido(codigo: string): boolean {
 
 // crypto.randomUUID solo existe en HTTPS o localhost; por la IP de la red local
 // (http://192.168.x.x) se arma un UUID v4 a mano con getRandomValues
-function generarUuid(): string {
+export function generarUuid(): string {
   if (typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
   }
