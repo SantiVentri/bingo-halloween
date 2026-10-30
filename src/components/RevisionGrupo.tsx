@@ -2,12 +2,14 @@
 
 import { use, useCallback, useEffect, useState } from "react";
 import { browser } from "react-dom";
-import { ArrowLeft, ArrowRight, Check, ChevronRight, Ghost, RefreshCw, Trophy, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ChevronRight, RefreshCw, X } from "lucide-react";
 import styles from "./RevisionGrupo.module.css";
 import Boton from "@/components/ui/Boton";
 import PantallaMensaje from "@/components/ui/PantallaMensaje";
 import BotonCopiar from "@/components/BotonCopiar";
 import { useAvisos } from "@/components/Avisos";
+import Calabaza from "@/components/ilustraciones/Calabaza";
+import Fantasma from "@/components/ilustraciones/Fantasma";
 import { supabase } from "@/lib/supabase/cliente";
 import { obtenerJugador } from "@/lib/jugador";
 import { CELDAS_TABLERO } from "@/lib/tablero";
@@ -73,6 +75,12 @@ export default function RevisionGrupo() {
     const avisar = useAvisos();
     const [carga, setCarga] = useState<EstadoCarga>({ tipo: "cargando" });
     const [revisando, setRevisando] = useState<string | null>(null);
+
+    // Resultados y jugador comparten la página: al pasar de uno a otro se vuelve arriba,
+    // si no queda el scroll del final de la lista de fotos
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, [revisando]);
 
     // Si falla una actualización, se siguen mostrando los datos que ya había
     const recargar = useCallback(async () => {
@@ -147,7 +155,7 @@ export default function RevisionGrupo() {
     if (entregas.every((entrega) => entrega.uuid === miId)) {
         return (
             <PantallaMensaje
-                icono={<Ghost />}
+                icono={<Fantasma />}
                 titulo={entregue ? "Todavía nadie más cerró su tablero" : "Todavía nadie cerró su tablero"}
                 texto="Cuando alguien lo cierre, aparece acá para votar sus fotos."
                 accion={<Boton href="/tablero" variante="secundario">Ir a mi tablero</Boton>}
@@ -189,15 +197,7 @@ export default function RevisionGrupo() {
             </header>
 
             {completo ? (
-                <div className={styles.ganador}>
-                    <Trophy aria-hidden="true" />
-                    <div>
-                        <p className={styles.ganadorNombre}>¡Ganó {ranking[0].entrega.nombre}!</p>
-                        <p className={styles.ganadorDetalle}>
-                            {ranking[0].validas}/{CELDAS_TABLERO} válidas{empate ? " · ganó el desempate por la hora de su última foto" : ""}
-                        </p>
-                    </div>
-                </div>
+                <Podio ranking={ranking} empate={empate} />
             ) : (
                 <p className={styles.faltan}>Faltan votos: tocá cada jugador para revisar sus fotos.</p>
             )}
@@ -235,6 +235,36 @@ export default function RevisionGrupo() {
                 <BotonCopiar texto={textoResultado(ranking, completo)} etiqueta="Copiar resultado" />
             </div>
         </div>
+    );
+}
+
+// Lápidas de los tres primeros, con el ganador en el medio. Son decorativas:
+// el puesto y el puntaje de todos están en el ranking de abajo
+function Podio({ ranking, empate }: { ranking: Fila[]; empate: boolean }) {
+    const [primero, segundo, tercero] = ranking;
+    const lapidas = [
+        { fila: segundo, clase: styles.lapidaSegundo, puesto: 2 },
+        { fila: primero, clase: styles.lapidaPrimero, puesto: 1 },
+        { fila: tercero, clase: styles.lapidaTercero, puesto: 3 },
+    ];
+
+    return (
+        <section className={styles.podio}>
+            <p className={styles.ganadorNombre}>¡Ganó {primero.entrega.nombre}!</p>
+            <p className={styles.ganadorDetalle}>
+                {primero.validas}/{CELDAS_TABLERO} válidas{empate ? " · ganó el desempate por la hora de su última foto" : ""}
+            </p>
+            <div className={styles.lapidas} aria-hidden="true">
+                {lapidas.map(({ fila, clase, puesto }) => fila && (
+                    <div key={fila.entrega.uuid} className={`${styles.lapida} ${clase}`}>
+                        {puesto === 1 && <Calabaza className={styles.lapidaCalabaza} />}
+                        <span className={styles.lapidaPuesto}>{puesto}</span>
+                        <span className={styles.lapidaNombre}>{fila.entrega.nombre}</span>
+                        <span>{fila.validas}/{CELDAS_TABLERO}</span>
+                    </div>
+                ))}
+            </div>
+        </section>
     );
 }
 

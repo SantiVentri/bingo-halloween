@@ -1,19 +1,25 @@
 import type { Metadata, Viewport } from "next";
-import { Luckiest_Guy, Nunito } from "next/font/google";
+import { Anton, Nunito_Sans, Rubik_Wet_Paint } from "next/font/google";
 import "./globals.css";
 import Avisos from "@/components/Avisos";
 import RegistrarServiceWorker from "@/components/RegistrarServiceWorker";
 import { CELDAS_TABLERO } from "@/lib/tablero";
 
-// Parecidas a las del póster: Luckiest Guy para "BINGO" y los títulos, Nunito (redondeada) para el resto
-const luckiest = Luckiest_Guy({
-  variable: "--font-luckiest",
+// Rubik Wet Paint solo para "BINGO", Anton para títulos y botones, Nunito Sans para el resto
+const rubikWetPaint = Rubik_Wet_Paint({
+  variable: "--font-rubik-wet-paint",
   weight: "400",
   subsets: ["latin"],
 });
 
-const nunito = Nunito({
-  variable: "--font-nunito",
+const anton = Anton({
+  variable: "--font-anton",
+  weight: "400",
+  subsets: ["latin"],
+});
+
+const nunitoSans = Nunito_Sans({
+  variable: "--font-nunito-sans",
   subsets: ["latin"],
 });
 
@@ -24,13 +30,13 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#5e4c47",
+  themeColor: "#0e0b0b",
   viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="es" className={`${luckiest.variable} ${nunito.variable}`}>
+    <html lang="es" className={`${rubikWetPaint.variable} ${anton.variable} ${nunitoSans.variable}`}>
       <body>
         <Avisos>{children}</Avisos>
         <RegistrarServiceWorker />

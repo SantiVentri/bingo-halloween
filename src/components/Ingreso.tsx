@@ -5,6 +5,7 @@ import { browser } from "react-dom";
 import { ArrowLeft, KeyRound, TriangleAlert } from "lucide-react";
 import styles from "./Ingreso.module.css";
 import Boton from "@/components/ui/Boton";
+import Campo from "@/components/ui/Campo";
 import CodigoRecuperacion from "@/components/CodigoRecuperacion";
 import {
     LARGO_MAXIMO_NOMBRE,
@@ -129,17 +130,15 @@ export default function Ingreso() {
                         </span>
                     </p>
                 )}
-                <label className={styles.campo}>
-                    <span className={styles.etiqueta}>Código de recuperación</span>
-                    <input
-                        name="codigo"
-                        className={`${styles.input} ${styles.areaCodigo}`}
-                        autoComplete="off"
-                        autoCapitalize="off"
-                        spellCheck={false}
-                        placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                    />
-                </label>
+                <Campo
+                    etiqueta="Código de recuperación"
+                    name="codigo"
+                    mono
+                    autoComplete="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                    placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                />
                 {error && <p className={styles.error} role="alert">{error}</p>}
                 <Boton type="submit" anchoCompleto disabled={enviando}>
                     {enviando ? "Recuperando…" : "Recuperar tablero"}
@@ -164,16 +163,13 @@ export default function Ingreso() {
                 <h1 className={styles.titulo}>Encontrá a los {CELDAS_TABLERO} disfrazados</h1>
                 <p className={styles.bajada}>Poné tu nombre y te toca un tablero con {CELDAS_TABLERO} disfraces para fotografiar.</p>
             </div>
-            <label className={styles.campo}>
-                <span className={styles.etiqueta}>¿Cómo te llamás?</span>
-                <input
-                    name="nombre"
-                    className={styles.input}
-                    maxLength={LARGO_MAXIMO_NOMBRE}
-                    autoComplete="given-name"
-                    placeholder="Tu nombre"
-                />
-            </label>
+            <Campo
+                etiqueta="¿Cómo te llamás?"
+                name="nombre"
+                maxLength={LARGO_MAXIMO_NOMBRE}
+                autoComplete="given-name"
+                placeholder="Tu nombre"
+            />
             {error && <p className={styles.error} role="alert">{error}</p>}
             <Boton type="submit" anchoCompleto disabled={enviando}>{enviando ? "Entrando…" : "Empezar"}</Boton>
             <div className={styles.separador}><span>¿Ya jugaste en otro celular?</span></div>

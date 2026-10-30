@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState, type CSSProperties, type PointerEvent } from "react";
-import { Camera, Check, CloudUpload, Dices, Star } from "lucide-react";
+import { Check, CloudUpload, Dices, Star } from "lucide-react";
 import styles from "./Tablero.module.css";
 import type { Foto } from "@/lib/fotos";
 import { LADO_TABLERO } from "@/lib/tablero";
@@ -20,6 +20,25 @@ type TableroProps = {
 
 const MILISEGUNDOS_MANTENER = 550;
 const TOLERANCIA_MOVIMIENTO = 10;
+
+// Rotación de cada cartel y de su sello: fija por posición, para que no cambie al recargar
+const GIROS_CELDA = [-1.5, 1, -0.6, 1.2, -1, 0.7, 0.9, -1.3, 1];
+const GIROS_SELLO = [-9, 6, -4, 8, -7, 5, -11, 4, -6];
+
+function giroDe(posicion: number) {
+    return {
+        "--giro": `${GIROS_CELDA[posicion % GIROS_CELDA.length]}deg`,
+        "--giro-sello": `${GIROS_SELLO[posicion % GIROS_SELLO.length]}deg`,
+    } as CSSProperties;
+}
+
+function SeBusca() {
+    return <span className={styles.seBusca} aria-hidden="true">Se busca</span>;
+}
+
+function Sello() {
+    return <span className={styles.sello} aria-hidden="true">ENCONTRADO</span>;
+}
 
 export default function Tablero({
     categorias,
@@ -63,7 +82,7 @@ export default function Tablero({
 
                 if (onElegirCambio) {
                     return (
-                        <li key={categoria} className={styles.celda}>
+                        <li key={categoria} className={styles.celda} style={giroDe(posicion)}>
                             <button
                                 type="button"
                                 className={`${styles.boton} ${styles.cambiable}`}
@@ -75,6 +94,7 @@ export default function Tablero({
                                     // eslint-disable-next-line @next/next/no-img-element -- vista previa de un blob local
                                     <img src={urlDeFoto(ultima)} alt="" className={styles.miniatura} draggable={false} />
                                 )}
+                                {!ultima && <SeBusca />}
                                 <span className={styles.categoria}>{categoria}</span>
                                 <span className={`${styles.estado} ${styles.estadoCambio}`} aria-hidden="true"><Dices /></span>
                             </button>
@@ -85,12 +105,13 @@ export default function Tablero({
                 if (elegidas) {
                     const elegida = fotosCelda.find((foto) => foto.id === elegidas[categoria]);
                     return (
-                        <li key={categoria} className={styles.celda}>
+                        <li key={categoria} className={styles.celda} style={giroDe(posicion)}>
                             <div className={styles.boton} data-con-foto={elegida ? true : undefined} aria-label={`${categoria}: foto elegida`}>
                                 {elegida && (
                                     // eslint-disable-next-line @next/next/no-img-element -- vista previa de un blob local
                                     <img src={urlDeFoto(elegida)} alt="" className={styles.miniatura} draggable={false} />
                                 )}
+                                {elegida ? <Sello /> : <SeBusca />}
                                 <span className={styles.categoria}>{categoria}</span>
                                 <span className={`${styles.estado} ${styles.estadoElegida}`} aria-hidden="true"><Star /></span>
                             </div>
@@ -99,7 +120,7 @@ export default function Tablero({
                 }
 
                 return (
-                    <li key={categoria} className={styles.celda}>
+                    <li key={categoria} className={styles.celda} style={giroDe(posicion)}>
                         {/* Tocar abre el selector nativo: cámara o galería (RF-06).
                             Mantener apretado pide borrar la última foto (RF-14) */}
                         <label
@@ -161,7 +182,7 @@ export default function Tablero({
                                 // eslint-disable-next-line @next/next/no-img-element -- vista previa de un blob local
                                 <img src={urlDeFoto(ultima)} alt="" className={styles.miniatura} draggable={false} />
                             )}
-                            {!ultima && <Camera className={styles.camara} aria-hidden="true" />}
+                            {ultima ? <Sello /> : <SeBusca />}
                             <span className={styles.categoria}>{categoria}</span>
                             {fotosCelda.length > 0 && (
                                 <span
