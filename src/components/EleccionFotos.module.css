@@ -1,0 +1,166 @@
+.cargando {
+    text-align: center;
+    color: var(--color-hueso);
+}
+
+.titulo {
+    font-size: 26px;
+    line-height: 1.2;
+    color: var(--color-calabaza);
+}
+
+.texto {
+    color: var(--color-hueso);
+    line-height: 1.4;
+}
+
+.incompleto,
+.resumen {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    text-align: center;
+}
+
+/* El paso ocupa toda la pantalla: la foto se lleva el espacio que sobra */
+.paso {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    height: calc(100dvh - 32px);
+}
+
+.paso > :nth-child(2) {
+    flex: 1;
+}
+
+.encabezado {
+    text-align: center;
+}
+
+.etiqueta {
+    font-size: 14px;
+    font-weight: bold;
+    color: var(--color-hueso);
+}
+
+.navegacion {
+    display: flex;
+    justify-content: space-between;
+}
+
+.principal {
+    padding: 15px;
+    border: none;
+    border-radius: 10px;
+    background-color: var(--color-sangre);
+    color: var(--color-texto);
+    font: inherit;
+    font-weight: bold;
+    text-align: center;
+    cursor: pointer;
+}
+
+.principal:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.secundario {
+    padding: 10px 4px;
+    border: none;
+    background: none;
+    color: var(--color-hueso);
+    font: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.grilla {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    list-style: none;
+}
+
+.celda {
+    position: relative;
+    aspect-ratio: 1;
+}
+
+.celdaBoton {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 6px;
+    border: 2px solid var(--color-sangre);
+    border-radius: 8px;
+    overflow: hidden;
+    background: none;
+    color: var(--color-texto);
+    font: inherit;
+}
+
+button.celdaBoton {
+    cursor: pointer;
+}
+
+button.celdaBoton:focus-visible {
+    outline: 3px solid var(--color-calabaza);
+}
+
+.miniatura {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.categoria {
+    position: relative;
+    font-size: 12px;
+    font-weight: bold;
+    line-height: 1.15;
+    text-shadow: 0 0 4px var(--color-sombra), 0 0 2px var(--color-sombra);
+    overflow-wrap: anywhere;
+}
+
+.pendiente {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background-color: var(--color-calabaza);
+    font-size: 12px;
+}
+
+.avisoPendientes {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    border-left: 4px solid var(--color-calabaza);
+    text-align: left;
+}
+
+.reintentar {
+    flex-shrink: 0;
+    padding: 8px 14px;
+    border: none;
+    border-radius: 8px;
+    background-color: var(--color-calabaza);
+    color: var(--color-texto);
+    font: inherit;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.reintentar:disabled {
+    opacity: 0.7;
+    cursor: default;
+}
