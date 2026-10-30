@@ -1,20 +1,18 @@
 .codigoRecuperacion {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
 }
 
-.aviso {
-    line-height: 1.4;
-}
-
-/* user-select: all para copiarlo entero de un toque si el portapapeles no anda */
 .codigo {
-    padding: 12px;
-    border: 2px dashed var(--color-calabaza);
-    border-radius: 8px;
-    font-family: var(--font-geist-mono), monospace;
-    font-size: 15px;
+    display: block;
+    padding: 14px 16px;
+    border: 1px solid var(--borde);
+    border-radius: var(--radio-m);
+    background-color: var(--fondo);
+    font-family: var(--fuente-mono);
+    font-size: 14px;
+    letter-spacing: 0.02em;
     text-align: center;
     overflow-wrap: anywhere;
     user-select: all;

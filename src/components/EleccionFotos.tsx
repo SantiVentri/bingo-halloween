@@ -2,17 +2,20 @@
 
 import { use, useState } from "react";
 import { browser } from "react-dom";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import SinJugador from "@/components/SinJugador";
+import { ArrowLeft, Check, CloudUpload, Lock, LockKeyhole, Pencil, RefreshCw } from "lucide-react";
 import styles from "./EleccionFotos.module.css";
+import SinJugador from "@/components/SinJugador";
 import Carrusel from "@/components/Carrusel";
 import Confirmacion from "@/components/Confirmacion";
+import PantallaMensaje from "@/components/ui/PantallaMensaje";
+import Boton from "@/components/ui/Boton";
 import { obtenerJugador, type Jugador } from "@/lib/jugador";
 import { generarTablero } from "@/lib/tablero";
-import { completarElegidas, guardarEleccion, obtenerEleccion } from "@/lib/eleccion";
+import { completarElegidas, guardarEleccion } from "@/lib/eleccion";
 import type { Foto } from "@/lib/fotos";
 import { useFotos } from "@/hooks/useFotos";
+import { useCambios, useEleccion } from "@/hooks/useAlmacen";
 
 // Elección de la foto final de cada celda, paso a paso (RF-16, RF-17, RF-26)
 export default function EleccionFotos() {
@@ -24,17 +27,6 @@ export default function EleccionFotos() {
     if (!jugador) {
         return <SinJugador />;
     }
-    // Con el tablero ya cerrado no hay nada que elegir. No se redirige: el router
-    // recordaría la redirección y la repetiría después de reabrir el tablero
-    if (obtenerEleccion(jugador.uuid).confirmadaEn) {
-        return (
-            <div className={styles.incompleto}>
-                <h1 className={styles.titulo}>Tu tablero ya está cerrado</h1>
-                <p>Para cambiar alguna foto, reabrilo desde el tablero.</p>
-                <Link href="/tablero" className={styles.principal}>Ir al tablero</Link>
-            </div>
-        );
-    }
 
     return <Eleccion jugador={jugador} />;
 }
@@ -45,40 +37,55 @@ type Vista = { tipo: "paso"; categoria: string; desdeResumen: boolean } | { tipo
 function Eleccion({ jugador }: { jugador: Jugador }) {
     const router = useRouter();
     const { fotos, cargando, subiendo, reintentar, urlDeFoto } = useFotos(jugador.uuid);
-    const [guardadas, setGuardadas] = useState(() => obtenerEleccion(jugador.uuid).elegidas);
+    // Se leen de localStorage en cada render: así se actualizan aunque Next
+    // haya dejado esta pantalla oculta al navegar
+    const eleccion = useEleccion(jugador.uuid);
+    const cambios = useCambios(jugador.uuid);
     const [vista, setVista] = useState<Vista | null>(null);
     const [confirmando, setConfirmando] = useState(false);
 
-    if (cargando) {
-        return <p className={styles.cargando}>Cargando tus fotos…</p>;
+    // Con el tablero ya cerrado no hay nada que elegir. No se redirige: el router
+    // recordaría la redirección y la repetiría después de reabrir el tablero
+    if (eleccion.confirmadaEn) {
+        return (
+            <PantallaMensaje
+                icono={<Lock />}
+                titulo="Tu tablero ya está cerrado"
+                texto="Para cambiar alguna foto, reabrilo desde el tablero."
+                accion={<Boton href="/tablero">Ir al tablero</Boton>}
+            />
+        );
     }
 
-    const categorias: readonly string[] = generarTablero(jugador.uuid);
+    if (cargando) {
+        return <p className={styles.cargando} role="status">Cargando tus fotos…</p>;
+    }
+
+    const categorias: readonly string[] = generarTablero(jugador.uuid, cambios);
     const fotosDe = (categoria: string) => fotos.filter((foto) => foto.categoria === categoria);
     const completas = categorias.filter((categoria) => fotosDe(categoria).length > 0).length;
 
     // Detección de tablero completo (RF-15): sin las 9 no se puede finalizar
     if (completas < categorias.length) {
         return (
-            <div className={styles.incompleto}>
-                <h1 className={styles.titulo}>Todavía no completaste el tablero</h1>
-                <p>Llevás {completas}/9 celdas. Cuando tengas una foto en cada una, vas a poder finalizar.</p>
-                <Link href="/tablero" className={styles.principal}>Volver al tablero</Link>
-            </div>
+            <PantallaMensaje
+                icono={<LockKeyhole />}
+                titulo="Todavía no completaste el tablero"
+                texto={`Llevás ${completas} de 9 celdas. Cuando tengas una foto en cada una, vas a poder finalizar.`}
+                accion={<Boton href="/tablero">Volver al tablero</Boton>}
+            />
         );
     }
 
     // Las celdas con una sola foto se eligen solas y se saltean
-    const elegidas = completarElegidas(categorias, fotos, guardadas);
+    const elegidas = completarElegidas(categorias, fotos, eleccion.elegidas);
     const porElegir = categorias.filter((categoria) => fotosDe(categoria).length > 1);
     const primeraSinElegir = porElegir.find((categoria) => !elegidas[categoria]);
     const vistaActual: Vista = vista
         ?? (primeraSinElegir ? { tipo: "paso", categoria: primeraSinElegir, desdeResumen: false } : { tipo: "resumen" });
 
     function elegir(categoria: string, foto: Foto, desdeResumen: boolean) {
-        const nuevas = { ...elegidas, [categoria]: foto.id };
-        setGuardadas(nuevas);
-        guardarEleccion(jugador.uuid, { elegidas: nuevas, confirmadaEn: null });
+        guardarEleccion(jugador.uuid, { elegidas: { ...elegidas, [categoria]: foto.id }, confirmadaEn: null });
         const siguiente = porElegir[porElegir.indexOf(categoria) + 1];
         setVista(!desdeResumen && siguiente
             ? { tipo: "paso", categoria: siguiente, desdeResumen: false }
@@ -99,12 +106,12 @@ function Eleccion({ jugador }: { jugador: Jugador }) {
                 total={porElegir.length}
                 urlDeFoto={urlDeFoto}
                 onElegir={(foto) => elegir(categoria, foto, desdeResumen)}
-                onAnterior={!desdeResumen && anterior
-                    ? () => setVista({ tipo: "paso", categoria: anterior, desdeResumen: false })
-                    : undefined}
-                onResumen={desdeResumen || porElegir.every((otra) => elegidas[otra])
+                onVolver={desdeResumen
                     ? () => setVista({ tipo: "resumen" })
-                    : undefined}
+                    : anterior
+                        ? () => setVista({ tipo: "paso", categoria: anterior, desdeResumen: false })
+                        : () => router.push("/tablero")}
+                etiquetaVolver={desdeResumen ? "Volver al resumen" : anterior ? "Celda anterior" : "Volver al tablero"}
             />
         );
     }
@@ -121,10 +128,10 @@ function Eleccion({ jugador }: { jugador: Jugador }) {
 
     return (
         <div className={styles.resumen}>
-            <h1 className={styles.titulo}>¡Bingo! Estas son tus 9 fotos</h1>
-            <p className={styles.texto}>
-                Tocá una celda para cambiar su foto. Las celdas con una sola foto ya están elegidas.
-            </p>
+            <header className={styles.encabezadoResumen}>
+                <h1 className={styles.tituloGrande}>¡Bingo!</h1>
+                <p className={styles.bajada}>Estas son tus 9 fotos. Tocá una para cambiarla.</p>
+            </header>
 
             <ul className={styles.grilla}>
                 {categorias.map((categoria, posicion) => {
@@ -137,7 +144,11 @@ function Eleccion({ jugador }: { jugador: Jugador }) {
                                 <img src={urlDeFoto(foto)} alt="" className={styles.miniatura} />
                             )}
                             <span className={styles.categoria}>{categoria}</span>
-                            {foto?.estado === "pendiente" && <span className={styles.pendiente}>⏳</span>}
+                            {foto?.estado === "pendiente" ? (
+                                <span className={`${styles.marca} ${styles.marcaPendiente}`} aria-label="Sin subir"><CloudUpload /></span>
+                            ) : cambiable && (
+                                <span className={styles.marca} aria-hidden="true"><Pencil /></span>
+                            )}
                         </>
                     );
                     return (
@@ -162,26 +173,22 @@ function Eleccion({ jugador }: { jugador: Jugador }) {
             {/* El informe necesita la URL de cada foto: hay que esperar a que suban */}
             {sinSubir > 0 && (
                 <div className={styles.avisoPendientes} role="status">
-                    <span>
-                        {sinSubir === 1
-                            ? "Falta subir 1 foto elegida."
-                            : `Faltan subir ${sinSubir} fotos elegidas.`}
+                    <CloudUpload aria-hidden="true" />
+                    <span className={styles.avisoTexto}>
+                        {sinSubir === 1 ? "Falta subir 1 foto elegida." : `Faltan subir ${sinSubir} fotos elegidas.`}
                     </span>
-                    <button type="button" className={styles.reintentar} onClick={reintentar} disabled={subiendo}>
+                    <Boton variante="secundario" tamano="s" icono={<RefreshCw />} onClick={reintentar} disabled={subiendo}>
                         {subiendo ? "Subiendo…" : "Reintentar"}
-                    </button>
+                    </Boton>
                 </div>
             )}
 
-            <button
-                type="button"
-                className={styles.principal}
-                disabled={!listas}
-                onClick={() => setConfirmando(true)}
-            >
-                Confirmar elección
-            </button>
-            <Link href="/tablero" className={styles.secundario}>Volver al tablero</Link>
+            <div className={styles.acciones}>
+                <Boton anchoCompleto icono={<Lock />} disabled={!listas} onClick={() => setConfirmando(true)}>
+                    Confirmar elección
+                </Boton>
+                <Boton href="/tablero" variante="fantasma" anchoCompleto>Volver al tablero</Boton>
+            </div>
 
             <Confirmacion
                 abierta={confirmando}
@@ -204,39 +211,40 @@ type PasoProps = {
     total: number;
     urlDeFoto: (foto: Foto) => string;
     onElegir: (foto: Foto) => void;
-    onAnterior?: () => void;
-    onResumen?: () => void;
+    onVolver: () => void;
+    etiquetaVolver: string;
 };
 
 // Una celda: se desliza entre sus fotos y se elige la que se ve
-function Paso({ categoria, fotos, elegida, numero, total, urlDeFoto, onElegir, onAnterior, onResumen }: PasoProps) {
+function Paso({ categoria, fotos, elegida, numero, total, urlDeFoto, onElegir, onVolver, etiquetaVolver }: PasoProps) {
     // Arranca en la elegida o, si no hay, en la más reciente
     const inicial = Math.max(0, elegida ? fotos.findIndex((foto) => foto.id === elegida) : fotos.length - 1);
     const [indice, setIndice] = useState(inicial);
     const actual = fotos[indice];
+    const yaElegida = actual.id === elegida;
 
     return (
         <div className={styles.paso}>
-            <div className={styles.encabezado}>
-                <span className={styles.etiqueta}>Elegí tu foto · {numero} de {total}</span>
-                <h1 className={styles.titulo}>{categoria}</h1>
+            <header className={styles.encabezadoPaso}>
+                <button type="button" className={styles.volver} onClick={onVolver} aria-label={etiquetaVolver}>
+                    <ArrowLeft />
+                </button>
+                <div className={styles.pasoTextos}>
+                    <span className={styles.etiqueta}>Elegí tu foto · {numero} de {total}</span>
+                    <h1 className={styles.titulo}>{categoria}</h1>
+                </div>
+            </header>
+            <div className={styles.avance} aria-hidden="true">
+                {Array.from({ length: total }, (_, posicion) => (
+                    <span key={posicion} className={posicion < numero ? styles.avanceLleno : styles.avanceVacio} />
+                ))}
             </div>
 
             <Carrusel fotos={fotos} indiceInicial={inicial} urlDeFoto={urlDeFoto} onCambiar={setIndice} />
 
-            <button type="button" className={styles.principal} onClick={() => onElegir(actual)}>
-                {actual.id === elegida ? "✓ Elegida · Seguir" : "Elegir esta"}
-            </button>
-            <div className={styles.navegacion}>
-                {onAnterior ? (
-                    <button type="button" className={styles.secundario} onClick={onAnterior}>‹ Anterior</button>
-                ) : (
-                    <Link href="/tablero" className={styles.secundario}>‹ Tablero</Link>
-                )}
-                {onResumen && (
-                    <button type="button" className={styles.secundario} onClick={onResumen}>Ver resumen ›</button>
-                )}
-            </div>
+            <Boton anchoCompleto icono={yaElegida ? <Check /> : undefined} onClick={() => onElegir(actual)}>
+                {yaElegida ? "Elegida · Seguir" : "Elegir esta"}
+            </Boton>
         </div>
     );
 }

@@ -1,4 +1,5 @@
 import type { Foto } from "@/lib/fotos";
+import { avisarCambioAlmacen, leerAlmacen } from "@/lib/almacen";
 
 // Foto final elegida por celda (RF-16) y si el tablero ya se cerró.
 // Se guarda en localStorage junto al jugador, una por UUID
@@ -23,18 +24,27 @@ function esEleccion(valor: unknown): valor is Eleccion {
   );
 }
 
-// Solo en el navegador
-export function obtenerEleccion(uuid: string): Eleccion {
+export function claveEleccion(uuid: string): string {
+  return PREFIJO + uuid;
+}
+
+export function interpretarEleccion(texto: string | null): Eleccion {
   try {
-    const guardada: unknown = JSON.parse(localStorage.getItem(PREFIJO + uuid) ?? "null");
+    const guardada: unknown = JSON.parse(texto ?? "null");
     return esEleccion(guardada) ? guardada : ELECCION_VACIA;
   } catch {
     return ELECCION_VACIA;
   }
 }
 
+// Solo en el navegador
+export function obtenerEleccion(uuid: string): Eleccion {
+  return interpretarEleccion(leerAlmacen(claveEleccion(uuid)));
+}
+
 export function guardarEleccion(uuid: string, eleccion: Eleccion): void {
-  localStorage.setItem(PREFIJO + uuid, JSON.stringify(eleccion));
+  localStorage.setItem(claveEleccion(uuid), JSON.stringify(eleccion));
+  avisarCambioAlmacen();
 }
 
 // Descarta las elegidas que ya no existen (se borraron) y elige sola

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { ChevronLeft, ChevronRight, CloudUpload } from "lucide-react";
 import styles from "./Carrusel.module.css";
 import type { Foto } from "@/lib/fotos";
 
@@ -93,27 +94,28 @@ export default function Carrusel({ fotos, indiceInicial, urlDeFoto, onCambiar }:
                                 onClick={alternarZoom}
                                 draggable={false}
                             />
-                            {foto.estado === "pendiente" && <span className={styles.pendiente}>⏳ Sin subir</span>}
+                            {foto.estado === "pendiente" && (
+                                <span className={styles.pendiente}><CloudUpload aria-hidden="true" /> Sin subir</span>
+                            )}
                         </div>
                     );
                 })}
             </div>
 
             {fotos.length > 1 && (
-                <div className={styles.barra}>
-                    <button type="button" className={styles.boton} onClick={() => irA(indice - 1)} disabled={indice === 0} aria-label="Foto anterior">
-                        ‹
+                <>
+                    <button type="button" className={`${styles.flecha} ${styles.flechaAnterior}`} onClick={() => irA(indice - 1)} disabled={indice === 0} aria-label="Foto anterior">
+                        <ChevronLeft />
                     </button>
-                    <span className={styles.puntos} aria-hidden="true">
+                    <button type="button" className={`${styles.flecha} ${styles.flechaSiguiente}`} onClick={() => irA(indice + 1)} disabled={indice === fotos.length - 1} aria-label="Foto siguiente">
+                        <ChevronRight />
+                    </button>
+                    <div className={styles.puntos} aria-hidden="true">
                         {fotos.map((foto, posicion) => (
                             <span key={foto.id} className={posicion === indice ? styles.puntoActual : styles.punto} />
                         ))}
-                    </span>
-                    <span className={styles.posicion}>{indice + 1}/{fotos.length}</span>
-                    <button type="button" className={styles.boton} onClick={() => irA(indice + 1)} disabled={indice === fotos.length - 1} aria-label="Foto siguiente">
-                        ›
-                    </button>
-                </div>
+                    </div>
+                </>
             )}
         </div>
     );

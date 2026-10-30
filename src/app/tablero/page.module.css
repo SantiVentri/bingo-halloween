@@ -1,20 +1,12 @@
-.page {
+/* Barra arriba, póster en el medio y barra abajo, en el alto de la pantalla */
+.pantalla {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100dvh;
+    flex-direction: column;
+    height: 100dvh;
+    padding-top: env(safe-area-inset-top);
 }
 
-/* Mantiene la proporción de la imagen (1414x2000) y entra entera en la pantalla */
-.poster {
-    position: relative;
-    width: min(100vw, 100dvh * 1414 / 2000, 600px);
-    aspect-ratio: 1414 / 2000;
-    container-type: inline-size;
-}
-
-.imagen {
-    display: block;
-    width: 100%;
-    height: auto;
+/* Los avisos flotantes quedan por encima de la barra de abajo */
+:root:has(.pantalla) {
+    --margen-avisos: 88px;
 }

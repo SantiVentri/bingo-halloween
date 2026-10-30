@@ -2,14 +2,17 @@
     display: flex;
     justify-content: center;
     min-height: 100dvh;
-    padding: 16px;
+    padding: calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom));
 }
 
 .main {
+    display: flex;
+    flex-direction: column;
     width: min(100%, 480px);
 }
 
 .cargando {
+    padding: 48px 0;
     text-align: center;
-    color: var(--color-hueso);
+    color: var(--texto-suave);
 }

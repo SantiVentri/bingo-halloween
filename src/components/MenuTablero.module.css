@@ -1,0 +1,75 @@
+.opciones {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    list-style: none;
+}
+
+.opcion {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: var(--radio-m);
+    background: none;
+    text-align: left;
+}
+
+.opcion:hover:not(:disabled) {
+    background-color: var(--borde);
+}
+
+.opcion:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.icono {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radio-m);
+    background-color: var(--superficie);
+}
+
+.icono svg {
+    width: 20px;
+    height: 20px;
+}
+
+.peligro .icono {
+    background-color: rgba(255, 90, 95, 0.16);
+    color: var(--peligro);
+}
+
+.peligro .titulo {
+    color: #ffc9cb;
+}
+
+.textos {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.titulo {
+    font-weight: 800;
+}
+
+.detalle {
+    font-size: 14px;
+    color: var(--texto-suave);
+}
+
+.flecha {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    color: var(--texto-suave);
+}

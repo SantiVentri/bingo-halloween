@@ -1,4 +1,5 @@
-/* Ocupa todo el espacio que le da el contenedor (la grilla dibujada en la imagen) */
+/* Ocupa todo el espacio que le da el contenedor (la grilla dibujada en la imagen).
+   Las medidas en cqw son relativas al ancho del póster */
 .tablero {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -19,11 +20,15 @@
     position: absolute;
     inset: 0;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 4%;
-    text-align: center;
+    gap: 1.2cqw;
+    padding: 5% 6%;
     overflow: hidden;
+    border: none;
+    background: none;
+    text-align: center;
     cursor: pointer;
     /* Sin selección de texto ni menú de la imagen al mantener apretado (iOS) */
     user-select: none;
@@ -31,15 +36,121 @@
     -webkit-touch-callout: none;
 }
 
+/* Con foto, el nombre baja y lo sostiene un degradado oscuro en vez de sombras de texto */
+.boton[data-con-foto] {
+    justify-content: flex-end;
+}
+
+/* Orden de capas: foto, degradado y relleno de mantener (1), texto e indicadores (2) */
+.boton[data-con-foto]::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: linear-gradient(to top, rgba(20, 12, 10, 0.88) 0%, rgba(20, 12, 10, 0.35) 55%, rgba(20, 12, 10, 0.1) 100%);
+}
+
 div.boton,
 div.boton:active {
-    background: none;
     cursor: default;
 }
 
 /* Respuesta al toque: la celda se aclara apenas */
 .boton:active {
     background-color: rgba(255, 255, 255, 0.08);
+}
+
+.boton:focus-within,
+.boton:focus-visible {
+    outline: 0.7cqw solid var(--calabaza);
+    outline-offset: -0.7cqw;
+}
+
+/* Oculto pero accesible desde el teclado */
+.input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+}
+
+.miniatura {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.camara {
+    position: relative;
+    z-index: 2;
+    width: 6cqw;
+    height: 6cqw;
+    color: var(--hueso);
+    opacity: 0.45;
+}
+
+.categoria {
+    position: relative;
+    z-index: 2;
+    font-size: 4cqw;
+    font-weight: 800;
+    line-height: 1.12;
+    color: var(--texto);
+    overflow-wrap: anywhere;
+}
+
+.boton[data-con-foto] .categoria {
+    font-size: 3.4cqw;
+}
+
+/* Indicador arriba a la derecha: subida, pendiente, elegida o para cambiar */
+.estado {
+    position: absolute;
+    z-index: 2;
+    top: 4%;
+    right: 4%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6cqw;
+    height: 5.4cqw;
+    min-width: 5.4cqw;
+    padding: 0 1.2cqw;
+    border-radius: var(--radio-total);
+    font-size: 3cqw;
+    font-weight: 800;
+    color: var(--texto);
+}
+
+.estado svg {
+    width: 3.4cqw;
+    height: 3.4cqw;
+    stroke-width: 3;
+}
+
+.estadoSubida {
+    background-color: rgba(20, 12, 10, 0.7);
+    color: var(--exito);
+}
+
+.estadoSubida span {
+    color: var(--texto);
+}
+
+.estadoPendiente,
+.estadoElegida {
+    background-color: var(--calabaza);
+}
+
+.estadoElegida svg {
+    fill: currentColor;
+}
+
+.estadoCambio {
+    background-color: rgba(20, 12, 10, 0.7);
+    color: var(--calabaza);
 }
 
 /* Al mantener apretado, la celda se hunde y se llena de rojo desde abajo:
@@ -56,7 +167,8 @@ div.boton:active {
     content: "";
     position: absolute;
     inset: 0;
-    background-color: var(--color-sangre);
+    z-index: 1;
+    background-color: var(--sangre);
     opacity: 0.45;
     transform: scaleY(0);
     transform-origin: bottom;
@@ -74,64 +186,22 @@ div.boton:active {
     }
 }
 
+/* Modo cambio: borde punteado por encima de la foto */
+.cambiable::after {
+    inset: 1.2cqw;
+    border: 0.6cqw dashed var(--calabaza);
+    border-radius: 1.5cqw;
+    background: none;
+    opacity: 1;
+    transform: none;
+}
+
+.cambiable:active {
+    background-color: rgba(240, 135, 42, 0.2);
+}
+
 @media (prefers-reduced-motion: reduce) {
     .boton[data-manteniendo] > * {
         transform: none;
     }
-}
-
-.boton:focus-within {
-    outline: 0.8cqw solid var(--color-calabaza);
-    outline-offset: -0.8cqw;
-}
-
-/* Oculto pero accesible desde el teclado */
-.input {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    opacity: 0;
-}
-
-/* Última foto de la celda, oscurecida para que se lea la categoría */
-.miniatura {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    filter: brightness(0.55);
-}
-
-/* cqw: relativo al ancho del póster, así el texto escala con la pantalla */
-.categoria {
-    position: relative;
-    font-size: 4.2cqw;
-    font-weight: bold;
-    line-height: 1.15;
-    color: var(--color-texto);
-    text-shadow: 0 0 0.6cqw var(--color-sombra);
-    overflow-wrap: anywhere;
-}
-
-.estadoSubida,
-.estadoPendiente,
-.estadoElegida {
-    position: absolute;
-    right: 3%;
-    bottom: 3%;
-    padding: 0.4cqw 1.4cqw;
-    border-radius: 2cqw;
-    font-size: 3cqw;
-    font-weight: bold;
-    color: var(--color-texto);
-}
-
-.estadoSubida {
-    background-color: var(--color-sombra);
-}
-
-.estadoPendiente,
-.estadoElegida {
-    background-color: var(--color-calabaza);
 }

@@ -48,9 +48,41 @@ function crearAleatorio(semilla: number): () => number {
   };
 }
 
+// Cambio de una celda por una categoría al azar; se aplican en orden
+export type Cambio = {
+  posicion: number;
+  categoria: Categoria;
+};
+
+export const CAMBIOS_MAXIMOS = 2;
+
 // Elige 9 categorías distintas y su orden a partir del UUID (RF-04, RF-05)
-export function generarTablero(uuid: string): Categoria[] {
-  const aleatorio = crearAleatorio(hashSemilla(uuid.trim().toLowerCase()));
+// y después aplica los cambios de categoría que haya hecho el jugador
+export function generarTablero(uuid: string, cambios: readonly Cambio[] = []): Categoria[] {
+  const tablero = tableroOriginal(uuid);
+  for (const { posicion, categoria } of cambios) tablero[posicion] = categoria;
+  return tablero;
+}
+
+// Sortea la categoría del próximo cambio entre las que nunca estuvieron en el tablero.
+// La semilla es el UUID y el número de cambio: recargar o recuperar el código
+// en otro celular da el mismo resultado, así que no se puede volver a tirar
+export function sortearCategoria(uuid: string, cambios: readonly Cambio[]): Categoria {
+  const usadas = new Set<string>([
+    ...tableroOriginal(uuid),
+    ...cambios.map((cambio) => cambio.categoria),
+  ]);
+  const disponibles = CATEGORIAS.filter((categoria) => !usadas.has(categoria));
+  const aleatorio = crearAleatorio(hashSemilla(`${normalizar(uuid)}:cambio:${cambios.length}`));
+  return disponibles[Math.floor(aleatorio() * disponibles.length)];
+}
+
+function normalizar(uuid: string): string {
+  return uuid.trim().toLowerCase();
+}
+
+function tableroOriginal(uuid: string): Categoria[] {
+  const aleatorio = crearAleatorio(hashSemilla(normalizar(uuid)));
   const mezcladas: Categoria[] = [...CATEGORIAS];
 
   // Fisher-Yates

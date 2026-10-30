@@ -1,0 +1,95 @@
+.boton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 48px;
+    padding: 0 20px;
+    border: 1px solid transparent;
+    border-radius: var(--radio-m);
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1.1;
+    text-align: center;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s, transform 0.1s;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.boton:active:not(:disabled) {
+    transform: scale(0.98);
+}
+
+.boton:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.chico {
+    min-height: 36px;
+    padding: 0 12px;
+    border-radius: var(--radio-s);
+    font-size: 14px;
+}
+
+.anchoCompleto {
+    width: 100%;
+}
+
+.icono {
+    display: inline-flex;
+    flex-shrink: 0;
+}
+
+.icono svg {
+    width: 20px;
+    height: 20px;
+}
+
+.chico .icono svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Acción principal: el rojo de "BINGO" */
+.primario {
+    background-color: var(--sangre);
+    color: var(--texto);
+}
+
+.primario:hover:not(:disabled) {
+    background-color: var(--sangre-presionada);
+}
+
+.secundario {
+    border-color: var(--borde-fuerte);
+    background-color: var(--superficie);
+    color: var(--texto);
+}
+
+.secundario:hover:not(:disabled) {
+    background-color: var(--superficie-alta);
+}
+
+.fantasma {
+    background: none;
+    color: var(--texto-suave);
+}
+
+.fantasma:hover:not(:disabled) {
+    color: var(--texto);
+    background-color: var(--borde);
+}
+
+/* Destructiva: se distingue de la principal por el borde y el ícono */
+.peligro {
+    border-color: var(--peligro);
+    background-color: rgba(255, 90, 95, 0.14);
+    color: #ffd7d8;
+}
+
+.peligro:hover:not(:disabled) {
+    background-color: rgba(255, 90, 95, 0.24);
+}

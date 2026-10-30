@@ -1,7 +1,10 @@
 'use client'
 
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { Trash2 } from "lucide-react";
 import styles from "./Confirmacion.module.css";
+import Dialogo from "@/components/ui/Dialogo";
+import Boton from "@/components/ui/Boton";
 
 type ConfirmacionProps = {
     abierta: boolean;
@@ -10,14 +13,14 @@ type ConfirmacionProps = {
     // Texto del botón principal y el que muestra mientras trabaja
     accion: string;
     accionEnCurso: string;
-    // Rojo para acciones destructivas
+    // Para acciones destructivas: botón de peligro con ícono de tacho
     peligro?: boolean;
     imagen?: string;
     onConfirmar: () => Promise<unknown> | void;
     onCerrar: () => void;
 };
 
-// Alerta de confirmación con el estilo del juego
+// Alerta de confirmación: se usa para borrar, cambiar categoría, cerrar y reabrir el tablero
 export default function Confirmacion({
     abierta,
     titulo,
@@ -29,63 +32,43 @@ export default function Confirmacion({
     onConfirmar,
     onCerrar,
 }: ConfirmacionProps) {
-    const dialogo = useRef<HTMLDialogElement>(null);
-    const idTitulo = useId();
     const [trabajando, setTrabajando] = useState(false);
-
-    useEffect(() => {
-        const elemento = dialogo.current;
-        if (!elemento) return;
-        if (abierta && !elemento.open) elemento.showModal();
-        if (!abierta && elemento.open) elemento.close();
-    }, [abierta]);
 
     async function confirmar() {
         setTrabajando(true);
         await onConfirmar();
         setTrabajando(false);
-        dialogo.current?.close();
+        onCerrar();
     }
 
     return (
-        <dialog
-            ref={dialogo}
-            className={styles.dialogo}
-            onClose={onCerrar}
-            onCancel={(evento) => {
-                if (trabajando) evento.preventDefault();
-            }}
-            aria-labelledby={idTitulo}
-        >
-            {abierta && (
+        <Dialogo
+            abierto={abierta}
+            onCerrar={onCerrar}
+            titulo={titulo}
+            bloqueado={trabajando}
+            cerrarAlTocarAfuera={false}
+            pie={
                 <>
-                    {imagen && (
-                        // eslint-disable-next-line @next/next/no-img-element -- vista previa de un blob local
-                        <img src={imagen} alt="" className={styles.imagen} />
-                    )}
-                    <h2 id={idTitulo} className={styles.titulo}>{titulo}</h2>
-                    <p className={styles.texto}>{texto}</p>
-                    <div className={styles.botones}>
-                        <button
-                            type="button"
-                            className={styles.cancelar}
-                            onClick={() => dialogo.current?.close()}
-                            disabled={trabajando}
-                            autoFocus
-                        >
-                            Cancelar
-                        </button>
-                        <button
-                            type="button"
-                            className={peligro ? `${styles.confirmar} ${styles.peligro}` : styles.confirmar}
-                            onClick={confirmar}
-                            disabled={trabajando}
-                        >
-                            {trabajando ? accionEnCurso : accion}
-                        </button>
-                    </div>
+                    <Boton variante="secundario" onClick={onCerrar} disabled={trabajando} autoFocus>
+                        Cancelar
+                    </Boton>
+                    <Boton
+                        variante={peligro ? "peligro" : "primario"}
+                        icono={peligro ? <Trash2 /> : undefined}
+                        onClick={confirmar}
+                        disabled={trabajando}
+                    >
+                        {trabajando ? accionEnCurso : accion}
+                    </Boton>
                 </>
+            }
+        >
+            {imagen && (
+                // eslint-disable-next-line @next/next/no-img-element -- vista previa de un blob local
+                <img src={imagen} alt="" className={styles.imagen} />
             )}
-        </dialog>
+            <p className={styles.texto}>{texto}</p>
+        </Dialogo>
     );
 }

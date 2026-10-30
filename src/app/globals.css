@@ -1,15 +1,50 @@
-/* Paleta de Halloween (tomada de la imagen del tablero) */
+/* Sistema de diseño: paleta tomada del póster, tipografías, radios y sombras */
 :root {
-  --color-fondo: #5e4c47;
-  --color-sangre: #ff3131;
-  --color-calabaza: #f0872a;
-  --color-hueso: #f2efe9;
-  --color-texto: #ffffff;
-  --color-sombra: rgba(0, 0, 0, 0.85);
+  /* Fondos (el marrón del póster y sus variantes) */
+  --fondo: #5e4c47;
+  --fondo-profundo: #4a3b37;
+  --superficie: #6b5853;
+  --superficie-alta: #78645e;
+  --borde: rgba(242, 239, 233, 0.14);
+  --borde-fuerte: rgba(242, 239, 233, 0.3);
+
+  /* Texto */
+  --texto: #ffffff;
+  --texto-suave: rgba(242, 239, 233, 0.74);
+
+  /* Acentos del póster */
+  --sangre: #ff3131;
+  --sangre-presionada: #e02424;
+  --calabaza: #f0872a;
+  --hueso: #f2efe9;
+
+  /* Estados */
+  --exito: #63c27b;
+  --peligro: #ff5a5f;
+
+  --velo: rgba(24, 15, 13, 0.72);
+  --sombra-texto: rgba(0, 0, 0, 0.6);
+  --elevacion: 0 12px 32px rgba(0, 0, 0, 0.35);
+
+  --radio-s: 8px;
+  --radio-m: 12px;
+  --radio-l: 20px;
+  --radio-total: 999px;
+
+  --fuente-texto: var(--font-nunito), system-ui, sans-serif;
+  --fuente-titulo: var(--font-luckiest), var(--fuente-texto);
+  --fuente-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
 }
 
 html {
   height: 100%;
+  -webkit-text-size-adjust: 100%;
 }
 
 html,
@@ -22,20 +57,48 @@ body {
   min-height: 100%;
   display: flex;
   flex-direction: column;
-  font-family: Arial, Helvetica, sans-serif;
-  color: var(--color-texto);
-  background-color: var(--color-fondo);
+  font-family: var(--fuente-texto);
+  font-size: 16px;
+  line-height: 1.45;
+  color: var(--texto);
+  background-color: var(--fondo);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 
 a {
   color: inherit;
   text-decoration: none;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--calabaza);
+  outline-offset: 2px;
+}
+
+::selection {
+  background-color: var(--calabaza);
+  color: var(--texto);
+}
+
+/* Contenido solo para lectores de pantalla */
+.solo-lectores {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

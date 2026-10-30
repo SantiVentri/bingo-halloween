@@ -1,85 +1,113 @@
 .cargando {
+    padding: 48px 0;
     text-align: center;
-    color: var(--color-hueso);
+    color: var(--texto-suave);
 }
 
-.titulo {
-    font-size: 26px;
-    line-height: 1.2;
-    color: var(--color-calabaza);
-}
-
-.texto {
-    color: var(--color-hueso);
-    line-height: 1.4;
-}
-
-.incompleto,
-.resumen {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    text-align: center;
-}
-
-/* El paso ocupa toda la pantalla: la foto se lleva el espacio que sobra */
+/* Paso: ocupa la pantalla; la foto se lleva el espacio que sobra */
 .paso {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    height: calc(100dvh - 32px);
+    gap: 14px;
+    height: calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
 }
 
-.paso > :nth-child(2) {
+.paso > :nth-child(3) {
     flex: 1;
 }
 
-.encabezado {
-    text-align: center;
+.encabezadoPaso {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.volver {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--borde);
+    border-radius: var(--radio-m);
+    background-color: var(--superficie);
+}
+
+.volver svg {
+    width: 22px;
+    height: 22px;
+}
+
+.pasoTextos {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
 }
 
 .etiqueta {
     font-size: 14px;
-    font-weight: bold;
-    color: var(--color-hueso);
+    font-weight: 700;
+    color: var(--texto-suave);
 }
 
-.navegacion {
+.titulo {
+    font-family: var(--fuente-titulo);
+    font-size: 28px;
+    font-weight: 400;
+    line-height: 1.05;
+    letter-spacing: 0.02em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.avance {
     display: flex;
-    justify-content: space-between;
+    gap: 4px;
 }
 
-.principal {
-    padding: 15px;
-    border: none;
-    border-radius: 10px;
-    background-color: var(--color-sangre);
-    color: var(--color-texto);
-    font: inherit;
-    font-weight: bold;
+.avanceLleno,
+.avanceVacio {
+    flex: 1;
+    height: 4px;
+    border-radius: var(--radio-total);
+    background-color: var(--borde-fuerte);
+}
+
+.avanceLleno {
+    background-color: var(--sangre);
+}
+
+/* Resumen */
+.resumen {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.encabezadoResumen {
     text-align: center;
-    cursor: pointer;
 }
 
-.principal:disabled {
-    opacity: 0.5;
-    cursor: default;
+.tituloGrande {
+    font-family: var(--fuente-titulo);
+    font-size: 48px;
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: 0.02em;
+    color: var(--sangre);
 }
 
-.secundario {
-    padding: 10px 4px;
-    border: none;
-    background: none;
-    color: var(--color-hueso);
-    font: inherit;
-    text-decoration: underline;
-    cursor: pointer;
+.bajada {
+    margin-top: 6px;
+    color: var(--texto-suave);
 }
 
 .grilla {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 6px;
+    gap: 8px;
     list-style: none;
 }
 
@@ -94,21 +122,25 @@
     display: flex;
     align-items: flex-end;
     justify-content: center;
-    padding: 6px;
-    border: 2px solid var(--color-sangre);
-    border-radius: 8px;
+    padding: 8px 6px;
+    border: none;
+    border-radius: var(--radio-m);
     overflow: hidden;
-    background: none;
-    color: var(--color-texto);
-    font: inherit;
+    background-color: var(--superficie);
+    color: var(--texto);
+}
+
+/* Degradado para que se lea el nombre sobre la foto */
+.celdaBoton::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: linear-gradient(to top, rgba(20, 12, 10, 0.85), transparent 60%);
 }
 
 button.celdaBoton {
     cursor: pointer;
-}
-
-button.celdaBoton:focus-visible {
-    outline: 3px solid var(--color-calabaza);
 }
 
 .miniatura {
@@ -121,46 +153,58 @@ button.celdaBoton:focus-visible {
 
 .categoria {
     position: relative;
+    z-index: 2;
     font-size: 12px;
-    font-weight: bold;
+    font-weight: 800;
     line-height: 1.15;
-    text-shadow: 0 0 4px var(--color-sombra), 0 0 2px var(--color-sombra);
+    text-align: center;
     overflow-wrap: anywhere;
 }
 
-.pendiente {
+.marca {
     position: absolute;
-    top: 4px;
-    right: 4px;
-    padding: 2px 6px;
-    border-radius: 999px;
-    background-color: var(--color-calabaza);
-    font-size: 12px;
+    top: 6px;
+    right: 6px;
+    z-index: 2;
+    display: inline-flex;
+    padding: 5px;
+    border-radius: var(--radio-total);
+    background-color: rgba(20, 12, 10, 0.7);
+}
+
+.marca svg {
+    width: 13px;
+    height: 13px;
+}
+
+.marcaPendiente {
+    background-color: var(--calabaza);
 }
 
 .avisoPendientes {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 10px 12px;
-    border-left: 4px solid var(--color-calabaza);
-    text-align: left;
+    gap: 10px;
+    padding: 10px 10px 10px 14px;
+    border-radius: var(--radio-m);
+    background-color: rgba(240, 135, 42, 0.14);
+    color: #ffd2a8;
 }
 
-.reintentar {
+.avisoPendientes > svg {
     flex-shrink: 0;
-    padding: 8px 14px;
-    border: none;
-    border-radius: 8px;
-    background-color: var(--color-calabaza);
-    color: var(--color-texto);
-    font: inherit;
-    font-weight: bold;
-    cursor: pointer;
+    width: 20px;
+    height: 20px;
 }
 
-.reintentar:disabled {
-    opacity: 0.7;
-    cursor: default;
+.avisoTexto {
+    flex: 1;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.acciones {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }

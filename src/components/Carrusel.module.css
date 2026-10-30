@@ -3,13 +3,15 @@
     display: flex;
     flex-direction: column;
     min-height: 0;
-    border-radius: 12px;
+    border: 1px solid var(--borde);
+    border-radius: var(--radio-l);
     overflow: hidden;
-    background-color: #000;
+    background-color: var(--fondo-profundo);
 }
 
 .carrusel:focus-visible {
-    outline: 3px solid var(--color-calabaza);
+    outline: 2px solid var(--calabaza);
+    outline-offset: 2px;
 }
 
 /* Una foto por pantalla; se pasa de una a otra deslizando */
@@ -21,6 +23,10 @@
     overflow-y: hidden;
     scroll-snap-type: x mandatory;
     scrollbar-width: none;
+}
+
+.pista::-webkit-scrollbar {
+    display: none;
 }
 
 /* Con zoom se arrastra dentro de la foto en vez de pasar a la siguiente */
@@ -59,61 +65,78 @@
     position: absolute;
     top: 12px;
     left: 12px;
-    padding: 4px 10px;
-    border-radius: 999px;
-    background-color: var(--color-calabaza);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: var(--radio-total);
+    background-color: var(--calabaza);
     font-size: 14px;
-    font-weight: bold;
+    font-weight: 800;
 }
 
-.barra {
-    display: flex;
+.pendiente svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Flechas flotando a los costados de la foto */
+.flecha {
+    position: absolute;
+    top: 50%;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    padding: 6px;
-    background-color: var(--color-sombra);
-}
-
-.boton {
     width: 44px;
     height: 44px;
     border: none;
-    border-radius: 50%;
-    background: none;
-    color: var(--color-texto);
-    font: inherit;
-    font-size: 28px;
-    cursor: pointer;
+    border-radius: var(--radio-total);
+    background-color: rgba(20, 12, 10, 0.6);
+    color: var(--texto);
+    transform: translateY(-50%);
+    backdrop-filter: blur(4px);
 }
 
-.boton:disabled {
-    opacity: 0.3;
-    cursor: default;
+.flecha:disabled {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.flecha svg {
+    width: 24px;
+    height: 24px;
+}
+
+.flechaAnterior {
+    left: 10px;
+}
+
+.flechaSiguiente {
+    right: 10px;
 }
 
 .puntos {
+    position: absolute;
+    left: 50%;
+    bottom: 12px;
     display: flex;
     gap: 6px;
+    padding: 6px 8px;
+    border-radius: var(--radio-total);
+    background-color: rgba(20, 12, 10, 0.6);
+    transform: translateX(-50%);
 }
 
 .punto,
 .puntoActual {
-    width: 8px;
-    height: 8px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
-    background-color: var(--color-hueso);
+    background-color: var(--hueso);
     opacity: 0.4;
 }
 
 .puntoActual {
-    background-color: var(--color-calabaza);
+    background-color: var(--texto);
     opacity: 1;
-}
-
-.posicion {
-    min-width: 36px;
-    text-align: center;
-    font-size: 14px;
-    font-weight: bold;
 }
