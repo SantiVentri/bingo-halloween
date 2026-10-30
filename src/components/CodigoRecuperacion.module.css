@@ -20,19 +20,3 @@
     user-select: all;
     -webkit-user-select: all;
 }
-
-.boton {
-    padding: 12px;
-    border: none;
-    border-radius: 10px;
-    background-color: var(--color-calabaza);
-    color: var(--color-texto);
-    font: inherit;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-.ayuda {
-    font-size: 14px;
-    color: var(--color-hueso);
-}

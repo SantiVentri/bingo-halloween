@@ -30,6 +30,17 @@
     font-weight: normal;
 }
 
+textarea.input {
+    resize: vertical;
+    font-family: var(--font-geist-mono), monospace;
+}
+
+.ayuda {
+    font-size: 14px;
+    font-weight: normal;
+    color: var(--color-hueso);
+}
+
 .input:focus {
     outline: 3px solid var(--color-calabaza);
 }

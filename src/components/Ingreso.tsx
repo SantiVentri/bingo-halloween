@@ -12,12 +12,14 @@ import {
     obtenerJugador,
     type Jugador,
 } from "@/lib/jugador";
+import { importarFotos } from "@/lib/fotos";
+import { fotosDelRespaldo, leerRespaldo } from "@/lib/respaldo";
 
 // seguir: ya hay jugador en este dispositivo · nuevo: primer ingreso
 // recuperar: "Ya tengo código" · codigo: recién creado, se muestra el código una vez
 type Paso = "seguir" | "nuevo" | "recuperar" | "codigo";
 
-// Ingreso sin login (RF-01, RF-24) y recuperación del tablero (RF-03)
+// Ingreso sin login (RF-01, RF-24) y recuperación del tablero con el código (RF-03) o el respaldo (RF-22)
 export default function Ingreso() {
     use(browser("El jugador se guarda en localStorage"));
 
@@ -42,11 +44,13 @@ export default function Ingreso() {
         cambiarPaso("codigo");
     }
 
-    function recuperar(evento: FormEvent<HTMLFormElement>) {
+    async function recuperar(evento: FormEvent<HTMLFormElement>) {
         evento.preventDefault();
         const datos = new FormData(evento.currentTarget);
-        const codigo = String(datos.get("codigo") ?? "");
-        const nombre = String(datos.get("nombre") ?? "").trim();
+        const texto = String(datos.get("codigo") ?? "");
+        const respaldo = leerRespaldo(texto);
+        const codigo = respaldo?.uuid ?? texto;
+        const nombre = String(datos.get("nombre") ?? "").trim() || respaldo?.nombre || "";
         if (!esCodigoValido(codigo)) {
             setError("Ese código no es válido. Revisá que esté completo, con los guiones.");
             return;
@@ -54,6 +58,14 @@ export default function Ingreso() {
         if (!nombre) {
             setError("Escribí tu nombre para entrar.");
             return;
+        }
+        if (respaldo) {
+            try {
+                await importarFotos(respaldo.uuid, fotosDelRespaldo(respaldo));
+            } catch {
+                setError("No se pudieron guardar las fotos del respaldo en este dispositivo.");
+                return;
+            }
         }
         setJugador(crearJugador(nombre, codigo));
         cambiarPaso("seguir");
@@ -92,18 +104,22 @@ export default function Ingreso() {
                     </p>
                 )}
                 <label className={styles.campo}>
-                    Código de recuperación
-                    <input
+                    Código de recuperación o respaldo
+                    <textarea
                         name="codigo"
                         className={styles.input}
+                        rows={3}
                         autoComplete="off"
                         autoCapitalize="off"
                         spellCheck={false}
                         placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
                     />
+                    <span className={styles.ayuda}>
+                        Si pegás el respaldo completo, también se recuperan tus fotos.
+                    </span>
                 </label>
                 <label className={styles.campo}>
-                    Tu nombre
+                    Tu nombre {!jugador && <span className={styles.ayuda}>(si pegaste el respaldo, podés dejarlo vacío)</span>}
                     <input
                         name="nombre"
                         className={styles.input}
