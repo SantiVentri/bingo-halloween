@@ -41,7 +41,7 @@
 }
 
 .cancelar,
-.borrar {
+.confirmar {
     padding: 12px;
     border-radius: 10px;
     color: var(--color-texto);
@@ -55,13 +55,17 @@
     background: none;
 }
 
-.borrar {
+.confirmar {
     border: none;
+    background-color: var(--color-calabaza);
+}
+
+.peligro {
     background-color: var(--color-sangre);
 }
 
 .cancelar:disabled,
-.borrar:disabled {
+.confirmar:disabled {
     opacity: 0.7;
     cursor: default;
 }
