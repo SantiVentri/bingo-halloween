@@ -40,7 +40,7 @@ export async function guardarElegidas(jugadorId: string, elegidas: Record<string
   if (error) throw error;
 }
 
-// Cierra el tablero y lo entrega para la revisión; la base exige las 9 elecciones
+// Cierra el tablero y lo entrega para la revisión; la base exige todas las elecciones
 export async function entregarTablero(jugadorId: string): Promise<void> {
   const { error } = await supabase().rpc("entregar", { p_jugador: jugadorId });
   if (error) throw error;

@@ -29,33 +29,88 @@
     color: var(--texto-suave);
 }
 
-.ganador {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 16px;
-    border: 1px solid rgba(240, 135, 42, 0.5);
-    border-radius: var(--radio-l);
-    background-color: rgba(240, 135, 42, 0.14);
-}
-
-.ganador > svg {
-    flex-shrink: 0;
-    width: 36px;
-    height: 36px;
-    color: var(--calabaza);
+/* Podio: lápidas de distinta altura según el puesto */
+.podio {
+    text-align: center;
 }
 
 .ganadorNombre {
     font-family: var(--fuente-titulo);
-    font-size: 26px;
-    line-height: 1.05;
+    font-size: 32px;
+    line-height: 1.1;
     letter-spacing: 0.02em;
 }
 
 .ganadorDetalle {
     font-size: 14px;
     color: var(--texto-suave);
+}
+
+.lapidas {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 36px;
+    border-bottom: 4px solid var(--sangre);
+}
+
+.lapida {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 0 1 100px;
+    min-width: 0;
+    padding: 14px 6px 0;
+    border-radius: 50px 50px 0 0;
+    background-color: var(--hueso);
+    color: var(--tinta);
+    font-family: var(--fuente-titulo);
+    font-size: 16px;
+    line-height: 1.2;
+}
+
+.lapidaPrimero {
+    height: 164px;
+    padding-top: 22px;
+    background-color: var(--sangre);
+    color: var(--sobre-sangre);
+}
+
+.lapidaSegundo {
+    height: 122px;
+}
+
+.lapidaTercero {
+    height: 96px;
+}
+
+.lapidaCalabaza {
+    position: absolute;
+    top: -30px;
+    left: 50%;
+    width: 40px;
+    height: 40px;
+    margin-left: -20px;
+    color: var(--calabaza);
+}
+
+.lapidaPuesto {
+    font-size: 30px;
+    line-height: 1;
+    color: var(--sangre-presionada);
+}
+
+.lapidaPrimero .lapidaPuesto {
+    color: var(--tinta);
+}
+
+.lapidaNombre {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .faltan {
@@ -86,8 +141,14 @@
     text-align: left;
 }
 
-.fila:hover {
+.fila:active {
     background-color: var(--superficie-alta);
+}
+
+@media (hover: hover) {
+    .fila:hover {
+        background-color: var(--superficie-alta);
+    }
 }
 
 .puesto {
@@ -104,6 +165,7 @@
 
 .puestoGanador {
     background-color: var(--calabaza);
+    color: var(--tinta);
 }
 
 .filaTextos {
@@ -275,14 +337,12 @@
 
 .vale {
     border-color: var(--exito);
-    background-color: rgba(99, 194, 123, 0.2);
-    color: #c8f0d2;
+    background-color: var(--exito-tenue);
 }
 
 .noVale {
     border-color: var(--peligro);
-    background-color: rgba(255, 90, 95, 0.18);
-    color: #ffd7d8;
+    background-color: var(--peligro-tenue);
 }
 
 .pieJugador {
@@ -299,6 +359,7 @@
     padding: 1px 8px;
     border-radius: var(--radio-total);
     background-color: var(--calabaza);
+    color: var(--tinta);
     font-size: 12px;
     font-weight: 800;
     vertical-align: 2px;

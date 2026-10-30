@@ -21,7 +21,7 @@
     width: 48px;
     height: 48px;
     border-radius: var(--radio-total);
-    background-color: rgba(240, 135, 42, 0.18);
+    background-color: var(--calabaza-tenue);
     color: var(--calabaza);
 }
 
@@ -34,63 +34,18 @@
     font-family: var(--fuente-titulo);
     font-size: 30px;
     font-weight: 400;
-    line-height: 1.05;
-    letter-spacing: 0.02em;
+    line-height: 1.1;
+    letter-spacing: 0.01em;
 }
 
 .bajada {
     color: var(--texto-suave);
 }
 
-.campo {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.etiqueta {
-    font-size: 15px;
-    font-weight: 800;
-}
-
-/* 16px evita que iOS haga zoom al enfocar el campo */
-.input {
-    width: 100%;
-    min-height: 52px;
-    padding: 12px 14px;
-    border: 1px solid var(--borde-fuerte);
-    border-radius: var(--radio-m);
-    background-color: var(--fondo-profundo);
-    font-size: 16px;
-    transition: border-color 0.15s, box-shadow 0.15s;
-}
-
-.input::placeholder {
-    color: rgba(242, 239, 233, 0.4);
-}
-
-.input:focus {
-    outline: none;
-    border-color: var(--calabaza);
-    box-shadow: 0 0 0 3px rgba(240, 135, 42, 0.25);
-}
-
-.areaCodigo {
-    resize: vertical;
-    font-family: var(--fuente-mono);
-    font-size: 15px;
-}
-
-.ayuda {
-    font-size: 14px;
-    color: var(--texto-suave);
-}
-
 .error {
     padding: 10px 12px;
-    border-radius: var(--radio-s);
-    background-color: rgba(255, 90, 95, 0.14);
-    color: #ffc9cb;
+    border-left: 3px solid var(--peligro);
+    background-color: var(--peligro-tenue);
     font-size: 15px;
     font-weight: 600;
 }
@@ -99,9 +54,8 @@
     display: flex;
     gap: 10px;
     padding: 12px;
-    border-radius: var(--radio-s);
-    background-color: rgba(240, 135, 42, 0.14);
-    color: #ffd2a8;
+    border-left: 3px solid var(--calabaza);
+    background-color: var(--calabaza-tenue);
     font-size: 15px;
 }
 
@@ -109,6 +63,7 @@
     flex-shrink: 0;
     width: 20px;
     height: 20px;
+    color: var(--calabaza);
 }
 
 .separador {

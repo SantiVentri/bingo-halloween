@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useState, type ReactNode } from "react";
+import { use, useCallback, useState, type CSSProperties, type ReactNode } from "react";
 import { browser } from "react-dom";
 import { useRouter } from "next/navigation";
 import { CloudUpload, Dices, Ellipsis, Hand, Lock, PartyPopper, RefreshCw, UserX } from "lucide-react";
@@ -12,15 +12,26 @@ import MenuTablero from "@/components/MenuTablero";
 import Respaldo from "@/components/Respaldo";
 import ConfirmarBorrado from "@/components/ConfirmarBorrado";
 import Confirmacion from "@/components/Confirmacion";
+import Telon from "@/components/Telon";
+import Calabaza from "@/components/ilustraciones/Calabaza";
 import Boton from "@/components/ui/Boton";
 import PantallaMensaje from "@/components/ui/PantallaMensaje";
 import { useAvisos } from "@/components/Avisos";
 import { obtenerJugador, olvidarJugador, type Jugador } from "@/lib/jugador";
 import type { Foto } from "@/lib/fotos";
-import { CAMBIOS_MAXIMOS, generarTablero } from "@/lib/tablero";
+import { CAMBIOS_MAXIMOS, CELDAS_TABLERO, generarTablero } from "@/lib/tablero";
 import { cambiarCategoria as cambiarCategoriaRemota, reabrirTablero } from "@/lib/tableroRemoto";
 import { useFotos } from "@/hooks/useFotos";
 import { useTableroRemoto } from "@/hooks/useTableroRemoto";
+
+// Cada calabaza titila a su ritmo, entre 6 y 12 segundos: mezclados, parecen al azar.
+// El arranque negativo las desfasa desde el principio
+function ritmoDeCalabaza(posicion: number) {
+    return {
+        "--titilar-cada": `${6 + (posicion * 5) % 7}s`,
+        "--titilar-desde": `-${(posicion * 3) % 11}s`,
+    } as CSSProperties;
+}
 
 // Lee el jugador de localStorage; sin jugador ofrece volver al ingreso (RF-02)
 export default function TableroDelJugador() {
@@ -37,7 +48,7 @@ export default function TableroDelJugador() {
 }
 
 function TableroConFotos({ jugador }: { jugador: Jugador }) {
-    const { fotos, subiendo, agregarFotos, reintentar, urlDeFoto, eliminarFoto, eliminarTodas } = useFotos(jugador.id);
+    const { fotos, cargando, subiendo, agregarFotos, reintentar, urlDeFoto, eliminarFoto, eliminarTodas } = useFotos(jugador.id);
     const avisar = useAvisos();
     const router = useRouter();
     // Cambios, elección y entrega vienen de la base y se actualizan en vivo
@@ -65,6 +76,16 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
     const completas = categorias
         .filter((categoria) => fotos.some((foto) => foto.categoria === categoria)).length;
     const fotosACambiar = fotos.filter((foto) => foto.categoria === aCambiar?.categoria);
+
+    // El telón cae solo al completar el tablero acá: si ya estaba completo al cargar, no.
+    // Se compara contra el valor anterior, que recién se guarda con todo cargado
+    const [completasAntes, setCompletasAntes] = useState<number | null>(null);
+    const [mostrarTelon, setMostrarTelon] = useState(false);
+    const cerrarTelon = useCallback(() => setMostrarTelon(false), []);
+    if (!cargando && tablero && completas !== completasAntes) {
+        setCompletasAntes(completas);
+        if (completasAntes !== null && completas === CELDAS_TABLERO && !cerrado) setMostrarTelon(true);
+    }
 
     // Las fotos de la celda que todavía no subieron se borran acá; las subidas y el
     // sorteo de la categoría nueva los hace el servidor
@@ -126,16 +147,20 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
 
     const barra = (
         <>
-            <div className={styles.jugador}>
-                <span className={styles.nombre}>{jugador.nombre}</span>
-                {/* Contador de progreso (RF-28) */}
-                <span className={styles.progreso} aria-label={`${completas} de 9 celdas completadas`}>
-                    <span className={styles.segmentos} aria-hidden="true">
-                        {categorias.map((categoria, posicion) => (
-                            <span key={categoria} className={posicion < completas ? styles.segmentoLleno : styles.segmento} />
-                        ))}
-                    </span>
-                    <span className={styles.cuenta}>{completas}/9</span>
+            {/* Contador de progreso (RF-28) */}
+            <div className={styles.jugador} role="group" aria-label={`${completas} de ${CELDAS_TABLERO} celdas completadas`}>
+                <span className={styles.linea}>
+                    <span className={styles.nombre}>{jugador.nombre}</span>
+                    <span className={styles.cuenta} aria-hidden="true">{completas}/{CELDAS_TABLERO}</span>
+                </span>
+                <span className={styles.calabazas}>
+                    {categorias.map((categoria, posicion) => (
+                        <Calabaza
+                            key={categoria}
+                            className={posicion < completas ? styles.calabazaPrendida : styles.calabaza}
+                            style={ritmoDeCalabaza(posicion)}
+                        />
+                    ))}
                 </span>
             </div>
             <button type="button" className={styles.menu} onClick={() => setMenuAbierto(true)} aria-label="Opciones">
@@ -175,7 +200,7 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
                 </Boton>
             </>
         );
-    } else if (completas === 9) {
+    } else if (completas === CELDAS_TABLERO) {
         pie = <Estado icono={<PartyPopper />} titulo="¡Completaste el tablero!" detalle="Tocá Finalizar para elegir tus fotos" />;
     } else {
         pie = <Estado icono={<Hand />} titulo="Tocá una celda para sacar una foto" detalle="Manteniéndola apretada, borrás la última" />;
@@ -183,33 +208,32 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
 
     return (
         <>
-            <MarcoTablero barra={barra} pie={pie}>
-                {/* Interior de la grilla roja del póster, en % para que coincida en cualquier ancho */}
-                <div className={styles.grilla}>
-                    <Tablero
-                        categorias={categorias}
-                        fotos={fotos}
-                        urlDeFoto={urlDeFoto}
-                        onAgregarFotos={agregarFotos}
-                        onPedirBorrado={setPorBorrar}
-                        elegidas={cerrado ? tablero.elegidas : undefined}
-                        onElegirCambio={modoCambio && !cerrado
-                            ? (posicion) => setACambiar({
-                                posicion,
-                                categoria: categorias[posicion],
-                                cantidadFotos: fotos.filter((foto) => foto.categoria === categorias[posicion]).length,
-                                restantes: cambiosRestantes,
-                            })
-                            : undefined}
-                    />
-                </div>
-                {/* Con las 9 celdas completas aparece Finalizar en el centro de la grilla (RF-15, RF-26) */}
-                {!cerrado && !modoCambio && completas === 9 && (
+            <MarcoTablero barra={barra} pie={pie} luz={completas / CELDAS_TABLERO}>
+                <Tablero
+                    categorias={categorias}
+                    fotos={fotos}
+                    urlDeFoto={urlDeFoto}
+                    onAgregarFotos={agregarFotos}
+                    onPedirBorrado={setPorBorrar}
+                    elegidas={cerrado ? tablero.elegidas : undefined}
+                    onElegirCambio={modoCambio && !cerrado
+                        ? (posicion) => setACambiar({
+                            posicion,
+                            categoria: categorias[posicion],
+                            cantidadFotos: fotos.filter((foto) => foto.categoria === categorias[posicion]).length,
+                            restantes: cambiosRestantes,
+                        })
+                        : undefined}
+                />
+                {/* Con todas las celdas completas aparece Finalizar en el centro de la grilla (RF-15, RF-26) */}
+                {!cerrado && !modoCambio && completas === CELDAS_TABLERO && (
                     <div className={styles.finalizar}>
                         <Boton href="/finalizar">¡Bingo! Finalizar</Boton>
                     </div>
                 )}
             </MarcoTablero>
+
+            {mostrarTelon && <Telon onTerminar={cerrarTelon} />}
 
             <MenuTablero
                 abierto={menuAbierto}
@@ -263,7 +287,7 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
             <Confirmacion
                 abierta={reabriendo}
                 titulo="¿Reabrir tu tablero?"
-                texto="Tu entrega sale de la revisión y vas a poder agregar y borrar fotos otra vez. Después tenés que volver a confirmar tus 9 fotos."
+                texto={`Tu entrega sale de la revisión y vas a poder agregar y borrar fotos otra vez. Después tenés que volver a confirmar tus ${CELDAS_TABLERO} fotos.`}
                 accion="Reabrir"
                 accionEnCurso="Reabriendo…"
                 onConfirmar={reabrir}

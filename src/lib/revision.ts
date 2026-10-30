@@ -1,6 +1,6 @@
 import { asegurarSesion, supabase, urlPublica } from "@/lib/supabase/cliente";
 
-// Revisión del grupo: los tableros entregados con sus 9 fotos elegidas y una
+// Revisión del grupo: los tableros entregados con sus fotos elegidas y una
 // decisión compartida por foto (vale / no vale), guardada en la base
 export type FotoEnRevision = {
   id: string;
