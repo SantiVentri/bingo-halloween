@@ -1,0 +1,93 @@
+.visor {
+    width: 100vw;
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background-color: #000;
+    color: var(--color-texto);
+}
+
+.visor::backdrop {
+    background-color: #000;
+}
+
+/* Una foto por pantalla; se pasa de una a otra deslizando */
+.pista {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+}
+
+/* Con zoom se arrastra dentro de la foto en vez de pasar a la siguiente */
+.pistaFija {
+    overflow-x: hidden;
+}
+
+.marco {
+    flex: 0 0 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    scroll-snap-align: center;
+    overflow: hidden;
+}
+
+.marcoAmpliado {
+    display: block;
+    overflow: auto;
+}
+
+.imagen {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    cursor: zoom-in;
+}
+
+.marcoAmpliado .imagen {
+    max-width: none;
+    cursor: zoom-out;
+}
+
+.barra {
+    position: absolute;
+    left: 50%;
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px;
+    border-radius: 999px;
+    background-color: var(--color-sombra);
+    transform: translateX(-50%);
+}
+
+.boton {
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: 50%;
+    background: none;
+    color: var(--color-texto);
+    font: inherit;
+    font-size: 24px;
+    cursor: pointer;
+}
+
+.boton:disabled {
+    opacity: 0.3;
+    cursor: default;
+}
+
+.posicion {
+    min-width: 56px;
+    text-align: center;
+    font-weight: bold;
+}

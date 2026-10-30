@@ -2,6 +2,16 @@ import { genUploader } from "uploadthing/client";
 import type { RouterSubidas } from "@/app/api/uploadthing/core";
 import type { Foto } from "@/lib/fotos";
 
+// Borra la foto de UploadThing a través de /api/fotos (RF-14)
+export async function borrarFotoSubida(uuid: string, url: string): Promise<boolean> {
+  const respuesta = await fetch("/api/fotos", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ uuid, url }),
+  });
+  return respuesta.ok;
+}
+
 let subirArchivos: ReturnType<typeof genUploader<RouterSubidas>>["uploadFiles"] | null = null;
 
 // Pasa letras con tilde y espacios a algo seguro para el nombre del archivo

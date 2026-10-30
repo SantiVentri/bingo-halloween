@@ -25,6 +25,53 @@
     text-align: center;
     overflow: hidden;
     cursor: pointer;
+    /* Sin selección de texto ni menú de la imagen al mantener apretado (iOS) */
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+}
+
+/* Respuesta al toque: la celda se aclara apenas */
+.boton:active {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Al mantener apretado, la celda se hunde y se llena de rojo desde abajo:
+   cuando se llena, aparece la alerta de borrado */
+.boton > * {
+    transition: transform 0.15s ease-out;
+}
+
+.boton[data-manteniendo] > * {
+    transform: scale(0.94);
+}
+
+.boton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-color: var(--color-sangre);
+    opacity: 0.45;
+    transform: scaleY(0);
+    transform-origin: bottom;
+    pointer-events: none;
+}
+
+/* Arranca un poco después para que un toque corto no se tiña de rojo */
+.boton[data-manteniendo]::after {
+    animation: llenar calc(var(--mantener) - 150ms) linear 150ms forwards;
+}
+
+@keyframes llenar {
+    to {
+        transform: scaleY(1);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .boton[data-manteniendo] > * {
+        transform: none;
+    }
 }
 
 .boton:focus-within {

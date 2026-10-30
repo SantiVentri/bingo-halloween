@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { generarUuid } from "@/lib/jugador";
-import { guardarFoto, listarFotos, type Foto } from "@/lib/fotos";
+import { borrarFoto, guardarFoto, listarFotos, obtenerFoto, type Foto } from "@/lib/fotos";
 import { comprimirImagen, TAMANO_MAXIMO } from "@/lib/imagenes";
-import { subirFoto } from "@/lib/subidas";
+import { borrarFotoSubida, subirFoto } from "@/lib/subidas";
 
 const AVISO_FALLA = "Algunas fotos no se pudieron subir. Quedaron guardadas para reintentar.";
+const AVISO_MANTENER = "Tip: mantené apretada una celda para borrar su última foto.";
 
 type UsoFotos = {
     fotos: Foto[];
@@ -15,6 +16,7 @@ type UsoFotos = {
     agregarFotos: (categoria: string, archivos: File[]) => Promise<void>;
     reintentar: () => void;
     urlDeFoto: (foto: Foto) => string;
+    eliminarFoto: (foto: Foto) => Promise<boolean>;
 };
 
 // Fotos del jugador: se guardan primero en IndexedDB, se muestran al instante
@@ -25,6 +27,8 @@ export function useFotos(uuid: string): UsoFotos {
     const [aviso, setAviso] = useState("");
     const enCurso = useRef(false);
     const urlsLocales = useRef(new Map<string, string>());
+    // Fotos ya borradas: si alguna terminaba de subirse justo después, se borra también de la nube
+    const eliminadas = useRef(new Set<string>());
 
     function reemplazarFoto(actualizada: Foto) {
         setFotos((anteriores) =>
@@ -49,6 +53,10 @@ export function useFotos(uuid: string): UsoFotos {
                 if (!pendiente) break;
                 try {
                     const url = await subirFoto(pendiente);
+                    if (eliminadas.current.has(pendiente.id)) {
+                        borrarFotoSubida(uuid, url).catch(() => { });
+                        continue;
+                    }
                     const subida: Foto = {
                         ...pendiente,
                         estado: "subida",
@@ -71,6 +79,30 @@ export function useFotos(uuid: string): UsoFotos {
             setSubiendo(false);
         }
     }, [uuid]);
+
+    // Borra primero de UploadThing y después del celular (RF-14). Si la nube falla,
+    // la foto se queda para que se pueda volver a intentar y no quede huérfana
+    async function eliminarFoto(foto: Foto): Promise<boolean> {
+        try {
+            // Se relee porque pudo haberse subido después de dibujar la celda
+            const url = (await obtenerFoto(foto.id))?.url ?? foto.url;
+            if (url && !(await borrarFotoSubida(uuid, url))) throw new Error("UploadThing no la borró");
+            // Si se estaba subiendo justo ahora, la cola la borra de la nube al terminar
+            eliminadas.current.add(foto.id);
+            await borrarFoto(foto.id);
+        } catch {
+            setAviso("No se pudo borrar la foto. Revisá la conexión y probá de nuevo.");
+            return false;
+        }
+        setFotos((anteriores) => anteriores.filter((otra) => otra.id !== foto.id));
+        const urlLocal = urlsLocales.current.get(foto.id);
+        if (urlLocal) {
+            URL.revokeObjectURL(urlLocal);
+            urlsLocales.current.delete(foto.id);
+        }
+        setAviso((anterior) => (anterior === AVISO_MANTENER ? "" : anterior));
+        return true;
+    }
 
     // Carga las fotos guardadas e intenta subir las que quedaron pendientes
     useEffect(() => {
@@ -114,7 +146,8 @@ export function useFotos(uuid: string): UsoFotos {
     }, []);
 
     async function agregarFotos(categoria: string, archivos: File[]) {
-        setAviso("");
+        // Con la primera foto se explica cómo borrar
+        setAviso(fotos.length === 0 ? AVISO_MANTENER : "");
         // Pide que el navegador no borre las fotos guardadas (NF-05)
         navigator.storage?.persist?.().catch(() => { });
 
@@ -160,5 +193,6 @@ export function useFotos(uuid: string): UsoFotos {
         agregarFotos,
         reintentar: subirPendientes,
         urlDeFoto,
+        eliminarFoto,
     };
 }

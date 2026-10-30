@@ -1,0 +1,67 @@
+.dialogo {
+    margin: auto;
+    width: min(100% - 32px, 360px);
+    padding: 20px;
+    border: 2px solid var(--color-sangre);
+    border-radius: 12px;
+    background-color: var(--color-fondo);
+    color: var(--color-texto);
+    text-align: center;
+}
+
+.dialogo::backdrop {
+    background-color: var(--color-sombra);
+}
+
+.imagen {
+    display: block;
+    width: 140px;
+    height: 140px;
+    margin: 0 auto 16px;
+    border-radius: 8px;
+    object-fit: cover;
+}
+
+.titulo {
+    margin-bottom: 8px;
+    font-size: 20px;
+    line-height: 1.25;
+}
+
+.texto {
+    margin-bottom: 20px;
+    color: var(--color-hueso);
+    line-height: 1.4;
+}
+
+.botones {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.cancelar,
+.borrar {
+    padding: 12px;
+    border-radius: 10px;
+    color: var(--color-texto);
+    font: inherit;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.cancelar {
+    border: 1px solid var(--color-hueso);
+    background: none;
+}
+
+.borrar {
+    border: none;
+    background-color: var(--color-sangre);
+}
+
+.cancelar:disabled,
+.borrar:disabled {
+    opacity: 0.7;
+    cursor: default;
+}

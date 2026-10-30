@@ -61,6 +61,16 @@ export async function guardarFoto(foto: Foto): Promise<void> {
   await esperar(almacen.put(foto));
 }
 
+export async function obtenerFoto(id: string): Promise<Foto | undefined> {
+  const almacen = await abrirAlmacen("readonly");
+  return esperar(almacen.get(id));
+}
+
+export async function borrarFoto(id: string): Promise<void> {
+  const almacen = await abrirAlmacen("readwrite");
+  await esperar(almacen.delete(id));
+}
+
 // Agrega las fotos de un respaldo, salteando las que ya están (misma URL)
 export async function importarFotos(uuid: string, fotos: Foto[]): Promise<void> {
   const existentes = new Set((await listarFotos(uuid)).map((foto) => foto.url));

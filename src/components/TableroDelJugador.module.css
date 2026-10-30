@@ -30,6 +30,17 @@
     height: 58.15%;
 }
 
+.contador {
+    flex-shrink: 0;
+    margin-right: auto;
+    padding: 0.6cqw 2cqw;
+    border-radius: 2cqw;
+    background-color: var(--color-sombra);
+    font-size: 3.5cqw;
+    font-weight: bold;
+    color: var(--color-texto);
+}
+
 .acciones {
     display: flex;
     flex-shrink: 0;
