@@ -3,10 +3,11 @@
 import { use, useState, type CSSProperties } from "react";
 import { browser } from "react-dom";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, CloudUpload, Lock, LockKeyhole, Pencil, RefreshCw } from "lucide-react";
+import { ArrowLeft, Check, CloudUpload, Lock, LockKeyhole, PartyPopper, Pencil, RefreshCw, Share2 } from "lucide-react";
 import styles from "./EleccionFotos.module.css";
 import SinJugador from "@/components/SinJugador";
 import Carrusel from "@/components/Carrusel";
+import CompartirTablero from "@/components/CompartirTablero";
 import Confirmacion from "@/components/Confirmacion";
 import PantallaMensaje from "@/components/ui/PantallaMensaje";
 import Boton from "@/components/ui/Boton";
@@ -14,6 +15,7 @@ import { useAvisos } from "@/components/Avisos";
 import { obtenerJugador, type Jugador } from "@/lib/jugador";
 import { CELDAS_TABLERO, LADO_TABLERO, generarTablero } from "@/lib/tablero";
 import { completarElegidas } from "@/lib/eleccion";
+import { armarCeldas } from "@/lib/imagenTablero";
 import { entregarTablero, guardarElegidas } from "@/lib/tableroRemoto";
 import type { Foto } from "@/lib/fotos";
 import { useFotos } from "@/hooks/useFotos";
@@ -41,11 +43,14 @@ function Eleccion({ jugador }: { jugador: Jugador }) {
     const avisar = useAvisos();
     const { fotos, cargando, subiendo, reintentar, urlDeFoto } = useFotos(jugador.id);
     // Cambios, elección y entrega vienen de la base
-    const { estado } = useTableroRemoto(jugador.id);
+    const { estado, recargar } = useTableroRemoto(jugador.id);
     // Elecciones hechas acá que todavía no se guardaron (fotos sin subir)
     const [elegidasLocales, setElegidasLocales] = useState<Record<string, string>>({});
     const [vista, setVista] = useState<Vista | null>(null);
     const [confirmando, setConfirmando] = useState(false);
+    // Entregó desde esta pantalla: se festeja en lugar de avisar que ya está cerrado
+    const [recienEntregado, setRecienEntregado] = useState(false);
+    const [compartiendo, setCompartiendo] = useState(false);
 
     if (estado.tipo === "sinAcceso") {
         return <SinJugador />;
@@ -54,6 +59,39 @@ function Eleccion({ jugador }: { jugador: Jugador }) {
     // Con el tablero ya cerrado no hay nada que elegir. No se redirige: el router
     // recordaría la redirección y la repetiría después de reabrir el tablero
     if (estado.tipo === "listo" && estado.tablero.entregadoEn) {
+        if (recienEntregado) {
+            const { tablero } = estado;
+            const celdas = armarCeldas(generarTablero(jugador.id, tablero.cambios), tablero.elegidas, fotos);
+            return (
+                <>
+                    <PantallaMensaje
+                        icono={<PartyPopper />}
+                        titulo="¡Tablero entregado!"
+                        texto="Llevate tus fotos de la noche para compartirlas en tus redes. Después, pasá a votar las del grupo."
+                        accion={
+                            <div className={styles.acciones}>
+                                {celdas && (
+                                    <Boton anchoCompleto icono={<Share2 />} onClick={() => setCompartiendo(true)}>
+                                        Compartir mi tablero
+                                    </Boton>
+                                )}
+                                <Boton href="/revision" variante={celdas ? "secundario" : "primario"} anchoCompleto>
+                                    Ir a la revisión
+                                </Boton>
+                            </div>
+                        }
+                    />
+                    {celdas && (
+                        <CompartirTablero
+                            abierto={compartiendo}
+                            onCerrar={() => setCompartiendo(false)}
+                            celdas={celdas}
+                            nombre={jugador.nombre}
+                        />
+                    )}
+                </>
+            );
+        }
         return (
             <PantallaMensaje
                 icono={<Lock />}
@@ -133,17 +171,19 @@ function Eleccion({ jugador }: { jugador: Jugador }) {
     const listas = fotosElegidas.every((foto) => foto?.estado === "subida");
 
     // Se guardan las elegidas y se entrega; la base verifica que estén todas.
-    // Si falla, el tablero no se cierra
+    // Si falla, el tablero no se cierra. Se marca antes de entregar porque la
+    // actualización en vivo puede llegar antes de que termine la entrega
     async function confirmar() {
+        setRecienEntregado(true);
         try {
             await guardarElegidas(jugador.id, elegidas);
             await entregarTablero(jugador.id);
         } catch {
+            setRecienEntregado(false);
             avisar({ tipo: "error", texto: "No se pudo entregar tu tablero. Revisá la conexión y probá de nuevo." });
             return;
         }
-        // Directo a la revisión, a ver quiénes ya cerraron y votar sus fotos
-        router.push("/revision");
+        await recargar();
     }
 
     return (
@@ -213,7 +253,7 @@ function Eleccion({ jugador }: { jugador: Jugador }) {
             <Confirmacion
                 abierta={confirmando}
                 titulo="¿Cerrar tu tablero?"
-                texto={`Tus ${CELDAS_TABLERO} fotos se entregan para la revisión y ya no vas a poder subir ni borrar fotos. Después vas a la revisión a votar las fotos de los demás. Si te equivocaste, podés reabrirlo desde tu tablero.`}
+                texto={`Tus ${CELDAS_TABLERO} fotos se entregan para la revisión y ya no vas a poder subir ni borrar fotos. Después vas a poder compartir tu tablero y votar las fotos de los demás. Si te equivocaste, podés reabrirlo desde tu tablero.`}
                 accion="Cerrar y entregar"
                 accionEnCurso="Entregando…"
                 onConfirmar={confirmar}
