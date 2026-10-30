@@ -103,13 +103,12 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
                             Reabrir
                         </button>
                     </div>
-                ) : (
-                    // Con las 9 celdas completas aparece Finalizar (RF-15, RF-26)
-                    completas === 9 && (
-                        <Link href="/finalizar" className={styles.finalizar}>¡Bingo! Finalizar</Link>
-                    )
-                )}
+                ) : null}
             </div>
+            {/* Con las 9 celdas completas aparece Finalizar en el medio de la pantalla (RF-15, RF-26) */}
+            {!cerrado && completas === 9 && (
+                <Link href="/finalizar" className={styles.finalizar}>¡Bingo! Finalizar</Link>
+            )}
             <Confirmacion
                 abierta={reabriendo}
                 titulo="¿Reabrir tu tablero?"

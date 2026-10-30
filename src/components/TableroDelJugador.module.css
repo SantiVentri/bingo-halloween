@@ -93,27 +93,20 @@
     background-color: var(--color-fondo);
 }
 
+/* En el centro de la grilla: left 6.5% + 87.8% / 2 y top 33.75% + 58.15% / 2 */
 .finalizar {
-    padding: 2cqw 6cqw;
+    position: absolute;
+    top: 62.825%;
+    left: 50.4%;
+    z-index: 1;
+    padding: 2.5cqw 6cqw;
     border-radius: 3cqw;
     background-color: var(--color-sangre);
-    box-shadow: 0 0 3cqw var(--color-sangre);
     color: var(--color-texto);
     font-size: 4.5cqw;
     font-weight: bold;
-    animation: latido 1.6s ease-in-out infinite;
-}
-
-@keyframes latido {
-    50% {
-        transform: scale(1.06);
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .finalizar {
-        animation: none;
-    }
+    white-space: nowrap;
+    transform: translate(-50%, -50%);
 }
 
 .cerrado {
