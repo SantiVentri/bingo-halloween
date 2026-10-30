@@ -3,6 +3,7 @@ import { Luckiest_Guy, Nunito } from "next/font/google";
 import "./globals.css";
 import Avisos from "@/components/Avisos";
 import RegistrarServiceWorker from "@/components/RegistrarServiceWorker";
+import { CELDAS_TABLERO } from "@/lib/tablero";
 
 // Parecidas a las del póster: Luckiest Guy para "BINGO" y los títulos, Nunito (redondeada) para el resto
 const luckiest = Luckiest_Guy({
@@ -18,7 +19,7 @@ const nunito = Nunito({
 
 export const metadata: Metadata = {
   title: "Bingo de Halloween",
-  description: "Encontrá a los 9 disfrazados… si te animás. Creado por Santino Ventrice y Joaquín Urruty en 2026",
+  description: `Encontrá a los ${CELDAS_TABLERO} disfrazados… si te animás. Creado por Santino Ventrice y Joaquín Urruty en 2026`,
   appleWebApp: { title: "Bingo", statusBarStyle: "black-translucent" },
 };
 

@@ -4,6 +4,7 @@ import { useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { Camera, Check, CloudUpload, Dices, Star } from "lucide-react";
 import styles from "./Tablero.module.css";
 import type { Foto } from "@/lib/fotos";
+import { LADO_TABLERO } from "@/lib/tablero";
 
 type TableroProps = {
     categorias: readonly string[];
@@ -53,7 +54,7 @@ export default function Tablero({
         <ul
             className={styles.tablero}
             aria-label="Tablero de bingo"
-            style={{ "--mantener": `${MILISEGUNDOS_MANTENER}ms` } as CSSProperties}
+            style={{ "--lado": LADO_TABLERO, "--mantener": `${MILISEGUNDOS_MANTENER}ms` } as CSSProperties}
         >
             {categorias.map((categoria, posicion) => {
                 const fotosCelda = fotos.filter((foto) => foto.categoria === categoria);

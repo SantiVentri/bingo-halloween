@@ -14,6 +14,7 @@ import {
     recuperarJugador,
     type Jugador,
 } from "@/lib/jugador";
+import { CELDAS_TABLERO } from "@/lib/tablero";
 
 // seguir: ya hay jugador en este dispositivo · nuevo: primer ingreso
 // recuperar: "Ya tengo código" · codigo: recién creado, se muestra el código una vez
@@ -160,8 +161,8 @@ export default function Ingreso() {
         // como el submit del formulario siguiente en medio del clic y lo envía vacío
         <form key="nuevo" className={styles.ingreso} onSubmit={ingresar} noValidate>
             <div className={styles.encabezado}>
-                <h1 className={styles.titulo}>Encontrá a los 9 disfrazados</h1>
-                <p className={styles.bajada}>Poné tu nombre y te toca un tablero con 9 disfraces para fotografiar.</p>
+                <h1 className={styles.titulo}>Encontrá a los {CELDAS_TABLERO} disfrazados</h1>
+                <p className={styles.bajada}>Poné tu nombre y te toca un tablero con {CELDAS_TABLERO} disfraces para fotografiar.</p>
             </div>
             <label className={styles.campo}>
                 <span className={styles.etiqueta}>¿Cómo te llamás?</span>

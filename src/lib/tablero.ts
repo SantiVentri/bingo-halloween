@@ -24,7 +24,10 @@ export const CATEGORIAS = [
 
 export type Categoria = (typeof CATEGORIAS)[number];
 
-const TAMANO_TABLERO = 9;
+// Tiene que ser un cuadrado perfecto. La base también exige esta cantidad al entregar
+// (función `entregar` en supabase/migrations): cambiarla acá solo cambia la interfaz
+export const CELDAS_TABLERO = 9;
+export const LADO_TABLERO = Math.sqrt(CELDAS_TABLERO);
 
 // Convierte el UUID en un número de 32 bits (hash FNV-1a)
 function hashSemilla(texto: string): number {
@@ -56,7 +59,7 @@ export type Cambio = {
 
 export const CAMBIOS_MAXIMOS = 2;
 
-// Elige 9 categorías distintas y su orden a partir del UUID (RF-04, RF-05)
+// Elige las categorías del tablero, todas distintas, y su orden a partir del UUID (RF-04, RF-05)
 // y después aplica los cambios de categoría que haya hecho el jugador
 export function generarTablero(uuid: string, cambios: readonly Cambio[] = []): Categoria[] {
   const tablero = tableroOriginal(uuid);
@@ -91,5 +94,5 @@ function tableroOriginal(uuid: string): Categoria[] {
     [mezcladas[i], mezcladas[j]] = [mezcladas[j], mezcladas[i]];
   }
 
-  return mezcladas.slice(0, TAMANO_TABLERO);
+  return mezcladas.slice(0, CELDAS_TABLERO);
 }

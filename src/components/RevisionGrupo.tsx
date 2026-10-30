@@ -10,6 +10,7 @@ import BotonCopiar from "@/components/BotonCopiar";
 import { useAvisos } from "@/components/Avisos";
 import { supabase } from "@/lib/supabase/cliente";
 import { obtenerJugador } from "@/lib/jugador";
+import { CELDAS_TABLERO } from "@/lib/tablero";
 import {
     horaUltimaFoto,
     leerRevision,
@@ -53,7 +54,7 @@ function armarRanking(entregas: EntregaEnRevision[], votos: Votos): Fila[] {
 
 function textoResultado(ranking: Fila[], completo: boolean): string {
     const lineas = ranking.map((fila, posicion) =>
-        `${posicion + 1}. ${fila.entrega.nombre}: ${fila.validas}/9 válidas · última foto ${formatearHora(fila.ultimaFoto)}`);
+        `${posicion + 1}. ${fila.entrega.nombre}: ${fila.validas}/${CELDAS_TABLERO} válidas · última foto ${formatearHora(fila.ultimaFoto)}`);
     const cierre = completo ? `🏆 Ganó ${ranking[0].entrega.nombre}` : "Faltan votos: resultado parcial";
     return ["🎃 Resultado Bingo Halloween", ...lineas, cierre].join("\n");
 }
@@ -159,7 +160,7 @@ export default function RevisionGrupo() {
     if (jugador) {
         const posicion = ranking.indexOf(jugador);
         const siguiente = ranking.find((fila, indice) =>
-            indice !== posicion && fila.entrega.uuid !== miId && fila.votadas < 9) ?? null;
+            indice !== posicion && fila.entrega.uuid !== miId && fila.votadas < CELDAS_TABLERO) ?? null;
         return (
             <RevisionJugador
                 key={jugador.entrega.uuid}
@@ -174,7 +175,7 @@ export default function RevisionGrupo() {
         );
     }
 
-    const completo = ranking.every((fila) => fila.votadas === 9);
+    const completo = ranking.every((fila) => fila.votadas === CELDAS_TABLERO);
     const empate = completo && ranking.length > 1 && ranking[0].validas === ranking[1].validas;
 
     return (
@@ -193,7 +194,7 @@ export default function RevisionGrupo() {
                     <div>
                         <p className={styles.ganadorNombre}>¡Ganó {ranking[0].entrega.nombre}!</p>
                         <p className={styles.ganadorDetalle}>
-                            {ranking[0].validas}/9 válidas{empate ? " · ganó el desempate por la hora de su última foto" : ""}
+                            {ranking[0].validas}/{CELDAS_TABLERO} válidas{empate ? " · ganó el desempate por la hora de su última foto" : ""}
                         </p>
                     </div>
                 </div>
@@ -214,15 +215,15 @@ export default function RevisionGrupo() {
                                     {fila.entrega.uuid === miId && <span className={styles.vos}>Vos</span>}
                                 </span>
                                 <span className={styles.filaDetalle}>
-                                    {fila.votadas < 9
+                                    {fila.votadas < CELDAS_TABLERO
                                         ? fila.entrega.uuid === miId
-                                            ? `Las votan los demás · ${fila.votadas}/9`
-                                            : `Votadas ${fila.votadas}/9`
+                                            ? `Las votan los demás · ${fila.votadas}/${CELDAS_TABLERO}`
+                                            : `Votadas ${fila.votadas}/${CELDAS_TABLERO}`
                                         : `Última foto ${formatearHora(fila.ultimaFoto)}`}
                                 </span>
                             </span>
-                            <span className={styles.puntos} aria-label={`${fila.validas} de 9 válidas`}>
-                                {fila.validas}<span>/9</span>
+                            <span className={styles.puntos} aria-label={`${fila.validas} de ${CELDAS_TABLERO} válidas`}>
+                                {fila.validas}<span>/{CELDAS_TABLERO}</span>
                             </span>
                             <ChevronRight className={styles.flecha} aria-hidden="true" />
                         </button>
@@ -248,7 +249,7 @@ type RevisionJugadorProps = {
     onSiguiente: () => void;
 };
 
-// Las 9 fotos de un jugador, una abajo de la otra, con "Vale" / "No vale"
+// Las fotos de un jugador, una abajo de la otra, con "Vale" / "No vale"
 function RevisionJugador({ fila, propio, votos, onVotar, siguiente, onVolver, onSiguiente }: RevisionJugadorProps) {
     return (
         <div className={styles.jugador}>
@@ -259,7 +260,7 @@ function RevisionJugador({ fila, propio, votos, onVotar, siguiente, onVolver, on
                 <div className={styles.jugadorTextos}>
                     <h1 className={styles.jugadorNombre}>{fila.entrega.nombre}</h1>
                     <span className={styles.jugadorDetalle}>
-                        {propio ? "Tus fotos las votan los demás · " : ""}{fila.validas} válidas · votadas {fila.votadas}/9
+                        {propio ? "Tus fotos las votan los demás · " : ""}{fila.validas} válidas · votadas {fila.votadas}/{CELDAS_TABLERO}
                     </span>
                 </div>
             </header>

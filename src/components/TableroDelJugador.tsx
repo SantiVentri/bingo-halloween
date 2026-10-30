@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useState, type ReactNode } from "react";
+import { use, useState, type CSSProperties, type ReactNode } from "react";
 import { browser } from "react-dom";
 import { useRouter } from "next/navigation";
 import { CloudUpload, Dices, Ellipsis, Hand, Lock, PartyPopper, RefreshCw, UserX } from "lucide-react";
@@ -17,7 +17,7 @@ import PantallaMensaje from "@/components/ui/PantallaMensaje";
 import { useAvisos } from "@/components/Avisos";
 import { obtenerJugador, olvidarJugador, type Jugador } from "@/lib/jugador";
 import type { Foto } from "@/lib/fotos";
-import { CAMBIOS_MAXIMOS, generarTablero } from "@/lib/tablero";
+import { CAMBIOS_MAXIMOS, CELDAS_TABLERO, generarTablero } from "@/lib/tablero";
 import { cambiarCategoria as cambiarCategoriaRemota, reabrirTablero } from "@/lib/tableroRemoto";
 import { useFotos } from "@/hooks/useFotos";
 import { useTableroRemoto } from "@/hooks/useTableroRemoto";
@@ -129,13 +129,13 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
             <div className={styles.jugador}>
                 <span className={styles.nombre}>{jugador.nombre}</span>
                 {/* Contador de progreso (RF-28) */}
-                <span className={styles.progreso} aria-label={`${completas} de 9 celdas completadas`}>
-                    <span className={styles.segmentos} aria-hidden="true">
+                <span className={styles.progreso} aria-label={`${completas} de ${CELDAS_TABLERO} celdas completadas`}>
+                    <span className={styles.segmentos} style={{ "--celdas": CELDAS_TABLERO } as CSSProperties} aria-hidden="true">
                         {categorias.map((categoria, posicion) => (
                             <span key={categoria} className={posicion < completas ? styles.segmentoLleno : styles.segmento} />
                         ))}
                     </span>
-                    <span className={styles.cuenta}>{completas}/9</span>
+                    <span className={styles.cuenta}>{completas}/{CELDAS_TABLERO}</span>
                 </span>
             </div>
             <button type="button" className={styles.menu} onClick={() => setMenuAbierto(true)} aria-label="Opciones">
@@ -175,7 +175,7 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
                 </Boton>
             </>
         );
-    } else if (completas === 9) {
+    } else if (completas === CELDAS_TABLERO) {
         pie = <Estado icono={<PartyPopper />} titulo="¡Completaste el tablero!" detalle="Tocá Finalizar para elegir tus fotos" />;
     } else {
         pie = <Estado icono={<Hand />} titulo="Tocá una celda para sacar una foto" detalle="Manteniéndola apretada, borrás la última" />;
@@ -203,8 +203,8 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
                             : undefined}
                     />
                 </div>
-                {/* Con las 9 celdas completas aparece Finalizar en el centro de la grilla (RF-15, RF-26) */}
-                {!cerrado && !modoCambio && completas === 9 && (
+                {/* Con todas las celdas completas aparece Finalizar en el centro de la grilla (RF-15, RF-26) */}
+                {!cerrado && !modoCambio && completas === CELDAS_TABLERO && (
                     <div className={styles.finalizar}>
                         <Boton href="/finalizar">¡Bingo! Finalizar</Boton>
                     </div>
@@ -263,7 +263,7 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
             <Confirmacion
                 abierta={reabriendo}
                 titulo="¿Reabrir tu tablero?"
-                texto="Tu entrega sale de la revisión y vas a poder agregar y borrar fotos otra vez. Después tenés que volver a confirmar tus 9 fotos."
+                texto={`Tu entrega sale de la revisión y vas a poder agregar y borrar fotos otra vez. Después tenés que volver a confirmar tus ${CELDAS_TABLERO} fotos.`}
                 accion="Reabrir"
                 accionEnCurso="Reabriendo…"
                 onConfirmar={reabrir}

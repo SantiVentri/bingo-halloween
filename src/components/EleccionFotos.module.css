@@ -106,7 +106,7 @@
 
 .grilla {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(var(--lado), 1fr);
     gap: 8px;
     list-style: none;
 }

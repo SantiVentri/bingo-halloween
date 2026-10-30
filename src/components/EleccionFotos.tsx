@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useState } from "react";
+import { use, useState, type CSSProperties } from "react";
 import { browser } from "react-dom";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, CloudUpload, Lock, LockKeyhole, Pencil, RefreshCw } from "lucide-react";
@@ -12,7 +12,7 @@ import PantallaMensaje from "@/components/ui/PantallaMensaje";
 import Boton from "@/components/ui/Boton";
 import { useAvisos } from "@/components/Avisos";
 import { obtenerJugador, type Jugador } from "@/lib/jugador";
-import { generarTablero } from "@/lib/tablero";
+import { CELDAS_TABLERO, LADO_TABLERO, generarTablero } from "@/lib/tablero";
 import { completarElegidas } from "@/lib/eleccion";
 import { entregarTablero, guardarElegidas } from "@/lib/tableroRemoto";
 import type { Foto } from "@/lib/fotos";
@@ -73,13 +73,13 @@ function Eleccion({ jugador }: { jugador: Jugador }) {
     const fotosDe = (categoria: string) => fotos.filter((foto) => foto.categoria === categoria);
     const completas = categorias.filter((categoria) => fotosDe(categoria).length > 0).length;
 
-    // Detección de tablero completo (RF-15): sin las 9 no se puede finalizar
+    // Detección de tablero completo (RF-15): sin todas las celdas no se puede finalizar
     if (completas < categorias.length) {
         return (
             <PantallaMensaje
                 icono={<LockKeyhole />}
                 titulo="Todavía no completaste el tablero"
-                texto={`Llevás ${completas} de 9 celdas. Cuando tengas una foto en cada una, vas a poder finalizar.`}
+                texto={`Llevás ${completas} de ${CELDAS_TABLERO} celdas. Cuando tengas una foto en cada una, vas a poder finalizar.`}
                 accion={<Boton href="/tablero">Volver al tablero</Boton>}
             />
         );
@@ -132,7 +132,7 @@ function Eleccion({ jugador }: { jugador: Jugador }) {
     const sinSubir = fotosElegidas.filter((foto) => foto?.estado === "pendiente").length;
     const listas = fotosElegidas.every((foto) => foto?.estado === "subida");
 
-    // Se guardan las 9 elegidas y se entrega; la base verifica que estén las 9.
+    // Se guardan las elegidas y se entrega; la base verifica que estén todas.
     // Si falla, el tablero no se cierra
     async function confirmar() {
         try {
@@ -150,10 +150,10 @@ function Eleccion({ jugador }: { jugador: Jugador }) {
         <div className={styles.resumen}>
             <header className={styles.encabezadoResumen}>
                 <h1 className={styles.tituloGrande}>¡Bingo!</h1>
-                <p className={styles.bajada}>Estas son tus 9 fotos. Tocá una para cambiarla.</p>
+                <p className={styles.bajada}>Estas son tus {CELDAS_TABLERO} fotos. Tocá una para cambiarla.</p>
             </header>
 
-            <ul className={styles.grilla}>
+            <ul className={styles.grilla} style={{ "--lado": LADO_TABLERO } as CSSProperties}>
                 {categorias.map((categoria, posicion) => {
                     const foto = fotosElegidas[posicion];
                     const cambiable = fotosDe(categoria).length > 1;
@@ -213,7 +213,7 @@ function Eleccion({ jugador }: { jugador: Jugador }) {
             <Confirmacion
                 abierta={confirmando}
                 titulo="¿Cerrar tu tablero?"
-                texto="Tus 9 fotos se entregan para la revisión y ya no vas a poder subir ni borrar fotos. Después vas a la revisión a votar las fotos de los demás. Si te equivocaste, podés reabrirlo desde tu tablero."
+                texto={`Tus ${CELDAS_TABLERO} fotos se entregan para la revisión y ya no vas a poder subir ni borrar fotos. Después vas a la revisión a votar las fotos de los demás. Si te equivocaste, podés reabrirlo desde tu tablero.`}
                 accion="Cerrar y entregar"
                 accionEnCurso="Entregando…"
                 onConfirmar={confirmar}
