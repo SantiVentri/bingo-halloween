@@ -16,25 +16,34 @@ function claveDeUrl(url: unknown): string | null {
   }
 }
 
-// Borra una foto de UploadThing (RF-14). Es una ruta y no una Server Action porque
-// las Server Actions se rechazan detrás de un proxy (dev tunnels) cuyo host no coincide.
+// Borra fotos de UploadThing: una (`url`, RF-14) o varias de una vez (`urls`, borrar todo el tablero).
+// Es una ruta y no una Server Action porque las Server Actions se rechazan detrás de un
+// proxy (dev tunnels) cuyo host no coincide.
 // Sin login, la única protección es que el nombre del archivo empiece con el UUID de quien la borra (NF-08)
 export async function DELETE(request: Request) {
-  const { uuid, url } = await request.json().catch(() => ({}));
-  const clave = claveDeUrl(url);
-  if (typeof uuid !== "string" || !FORMATO_UUID.test(uuid) || !clave) {
+  const { uuid, url, urls } = await request.json().catch(() => ({}));
+  const lista: unknown[] = Array.isArray(urls) ? urls : [url];
+  const claves = lista.map(claveDeUrl);
+  if (
+    typeof uuid !== "string" ||
+    !FORMATO_UUID.test(uuid) ||
+    claves.length === 0 ||
+    claves.some((clave) => clave === null)
+  ) {
     return Response.json({ error: "Pedido inválido" }, { status: 400 });
   }
 
   // Para 6 jugadores entra todo en una página. El listado tarda en mostrar las fotos
   // recién subidas: si no aparece, se borra igual (la clave solo la conoce quien tiene la URL)
   const { files } = await utapi.listFiles({ limit: 500 });
-  const archivo = files.find((file) => file.key === clave);
-  if (archivo && !archivo.name.startsWith(`${uuid}__`)) {
-    return Response.json({ error: "La foto es de otro jugador" }, { status: 403 });
+  const ajena = files.some(
+    (file) => claves.includes(file.key) && !file.name.startsWith(`${uuid}__`),
+  );
+  if (ajena) {
+    return Response.json({ error: "Alguna foto es de otro jugador" }, { status: 403 });
   }
 
-  const { success } = await utapi.deleteFiles(clave);
+  const { success } = await utapi.deleteFiles(claves as string[]);
   return success
     ? Response.json({ borrada: true })
     : Response.json({ error: "UploadThing no la borró" }, { status: 502 });

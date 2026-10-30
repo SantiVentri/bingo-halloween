@@ -147,3 +147,14 @@
 .cambiarActivo {
     background-color: var(--color-calabaza);
 }
+
+.borrarTodo {
+    padding: 1cqw 2cqw;
+    border: none;
+    background: none;
+    color: var(--color-hueso);
+    font: inherit;
+    font-size: 3.2cqw;
+    text-decoration: underline;
+    cursor: pointer;
+}

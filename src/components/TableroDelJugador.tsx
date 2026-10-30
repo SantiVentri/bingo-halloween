@@ -40,11 +40,14 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
         urlDeFoto,
         eliminarFoto,
         avisar,
+        eliminarTodas,
     } = useFotos(jugador.uuid);
     const [porBorrar, setPorBorrar] = useState<Foto | null>(null);
     // Al confirmar la elección el tablero se cierra; se puede reabrir hasta el informe
     const [eleccion, setEleccion] = useState(() => obtenerEleccion(jugador.uuid));
     const [reabriendo, setReabriendo] = useState(false);
+    // Cantidad de fotos al abrir la alerta de borrar todo; null si está cerrada
+    const [borrandoTodo, setBorrandoTodo] = useState<number | null>(null);
     // Hasta 2 cambios de una celda por una categoría al azar, sin deshacer
     const [cambios, setCambios] = useState(() => obtenerCambios(jugador.uuid));
     const [modoCambio, setModoCambio] = useState(false);
@@ -73,6 +76,14 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
         setCambios(actualizados);
         setModoCambio(false);
         avisar(`🎲 «${aCambiar.categoria}» ahora es «${nueva}»`);
+    }
+
+    // Borra todas las fotos y la elección; las categorías y los cambios se mantienen
+    async function borrarTodo() {
+        if (!(await eliminarTodas())) return;
+        const vacia = { elegidas: {}, confirmadaEn: null };
+        guardarEleccion(jugador.uuid, vacia);
+        setEleccion(vacia);
     }
 
     function reabrir() {
@@ -155,7 +166,13 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
                             Reabrir
                         </button>
                     </div>
-                ) : null}
+                ) : (
+                    !modoCambio && fotos.length > 0 && (
+                        <button type="button" className={styles.borrarTodo} onClick={() => setBorrandoTodo(fotos.length)}>
+                            Borrar todo el tablero
+                        </button>
+                    )
+                )}
             </div>
             {/* Con las 9 celdas completas aparece Finalizar en el medio de la pantalla (RF-15, RF-26) */}
             {!cerrado && !modoCambio && completas === 9 && (
@@ -176,6 +193,16 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
                 peligro={(aCambiar?.cantidadFotos ?? 0) > 0}
                 onConfirmar={cambiarCategoria}
                 onCerrar={() => setACambiar(null)}
+            />
+            <Confirmacion
+                abierta={borrandoTodo !== null}
+                titulo="¿Borrar todo el tablero?"
+                texto={`Se van a borrar ${borrandoTodo === 1 ? "tu foto" : `tus ${borrandoTodo} fotos`} del celular y de la nube. Las categorías se mantienen. No se puede deshacer.`}
+                accion="Borrar todo"
+                accionEnCurso="Borrando…"
+                peligro
+                onConfirmar={borrarTodo}
+                onCerrar={() => setBorrandoTodo(null)}
             />
             <Confirmacion
                 abierta={reabriendo}

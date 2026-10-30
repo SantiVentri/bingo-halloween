@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { generarUuid } from "@/lib/jugador";
 import { borrarFoto, guardarFoto, listarFotos, obtenerFoto, type Foto } from "@/lib/fotos";
 import { comprimirImagen, TAMANO_MAXIMO } from "@/lib/imagenes";
-import { borrarFotoSubida, subirFoto } from "@/lib/subidas";
+import { borrarFotoSubida, borrarFotosSubidas, subirFoto } from "@/lib/subidas";
 
 const AVISO_FALLA = "Algunas fotos no se pudieron subir. Quedaron guardadas para reintentar.";
 const AVISO_MANTENER = "Tip: mantené apretada una celda para borrar su última foto.";
@@ -21,6 +21,7 @@ type UsoFotos = {
     eliminarFoto: (foto: Foto) => Promise<boolean>;
     // Muestra un aviso en el tablero
     avisar: (texto: string) => void;
+    eliminarTodas: () => Promise<boolean>;
 };
 
 // Fotos del jugador: se guardan primero en IndexedDB, se muestran al instante
@@ -106,6 +107,30 @@ export function useFotos(uuid: string): UsoFotos {
             urlsLocales.current.delete(foto.id);
         }
         setAviso((anterior) => (anterior === AVISO_MANTENER ? "" : anterior));
+        return true;
+    }
+
+    // Borra todas las fotos del jugador: primero de UploadThing en un solo pedido y
+    // después del celular. Si la nube falla, no se borra nada
+    async function eliminarTodas(): Promise<boolean> {
+        try {
+            const guardadas = await listarFotos(uuid);
+            const urls = guardadas.flatMap((foto) => (foto.url ? [foto.url] : []));
+            if (urls.length > 0 && !(await borrarFotosSubidas(uuid, urls))) {
+                throw new Error("UploadThing no las borró");
+            }
+            for (const foto of guardadas) {
+                eliminadas.current.add(foto.id);
+                await borrarFoto(foto.id);
+            }
+        } catch {
+            setAviso("No se pudieron borrar las fotos. Revisá la conexión y probá de nuevo.");
+            return false;
+        }
+        setFotos([]);
+        urlsLocales.current.forEach((url) => URL.revokeObjectURL(url));
+        urlsLocales.current.clear();
+        setAviso("");
         return true;
     }
 
@@ -206,5 +231,6 @@ export function useFotos(uuid: string): UsoFotos {
         urlDeFoto,
         eliminarFoto,
         avisar: setAviso,
+        eliminarTodas,
     };
 }
