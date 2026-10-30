@@ -1,0 +1,82 @@
+# Bingo de Halloween · Cambios respecto del documento del proyecto
+
+Este documento complementa a `Bingo_Halloween_Documento_del_Proyecto.pdf`: resume lo que cambió durante el desarrollo y el estado final de cada requerimiento.
+
+## 1. Cambios principales
+
+### Revisión del grupo en lugar del informe PDF
+El informe PDF (RF-18, RF-19, RF-20 y T-01) se reemplazó por una **revisión grupal**:
+
+- Al cerrar el tablero, la app sube a UploadThing una **entrega**: un JSON con el nombre del jugador y sus 9 fotos elegidas. Si el jugador reabre el tablero, la entrega se retira.
+- En `/revision`, abierta con el link, se ven las entregas de todos. El grupo se junta y, desde **un solo dispositivo**, marca cada foto como **Vale** o **No vale**. Los votos se guardan en ese dispositivo.
+- **Gana quien tenga más fotos válidas.** Si hay empate, gana quien **subió su última foto antes**, según la hora del servidor de UploadThing (no la del celular, que se puede cambiar).
+- El resultado se puede copiar como texto para mandarlo al grupo.
+
+Motivo: un informe no evita que alguien suba fotos que no corresponden. La validación real la hace el grupo mirando las fotos.
+
+### Borrar fotos: toque largo y confirmación
+- **RF-14:** para borrar la última foto de una celda se la mantiene apretada; aparece una alerta con la miniatura y se confirma. La foto se borra primero de UploadThing y después del celular.
+- **RF-29 (Deshacer):** reemplazado por la alerta de confirmación.
+- **RF-27 (galería a pantalla completa):** no hay galería por celda. El carrusel con zoom se usa al elegir las fotos finales.
+- **RF-25 (ver fotos de todos):** fuera del juego por decisión del grupo; las fotos de los demás se ven recién en la revisión.
+
+### Funciones agregadas (no estaban en el documento)
+- **Cambiar una categoría por otra al azar:** hasta 2 veces por jugador, también sobre la misma celda, sin deshacer. Si la celda tiene fotos, se borran. El sorteo usa el UUID y el número de cambio como semilla, así que no se puede volver a tirar. Los cambios entran en el respaldo.
+- **Borrar todo el tablero:** borra todas las fotos (del celular y de la nube) y la elección; las categorías y los cambios se mantienen.
+- **Cerrar y reabrir el tablero:** al confirmar la elección, el tablero se cierra (no se puede subir ni borrar) y se entrega; se puede reabrir con confirmación.
+
+### Interfaz
+- Rediseño completo: paleta del póster en variables CSS, tipografías Luckiest Guy (títulos) y Nunito (texto), botones y diálogos únicos e íconos SVG.
+- Tablero con barra superior (nombre, progreso, menú) y barra inferior con un solo estado a la vez. Las acciones secundarias (respaldo, cambiar categoría, borrar todo, revisión) están en un menú.
+- Avisos flotantes que se apilan abajo, en lugar de mensajes sobre el póster.
+
+## 2. Estado de los requerimientos
+
+| ID | Estado |
+|---|---|
+| RF-01 a RF-13 | Hechos |
+| RF-14 | Hecho (toque largo + confirmación) |
+| RF-15, RF-16, RF-17 | Hechos (paso a paso y resumen) |
+| RF-18, RF-19, RF-20 | Reemplazados por la revisión del grupo |
+| RF-21, RF-22 | Hechos (respaldo y restauración, incluye cambios de categoría) |
+| RF-23 | No hecho (opcional; se descartó) |
+| RF-24 | Hecho |
+| RF-25 | Fuera por decisión del grupo |
+| RF-26 | Hecho (gana quien tiene más fotos válidas) |
+| RF-27 | Hecho dentro de la elección de fotos (carrusel con zoom) |
+| RF-28 | Hecho (barra de progreso X/9) |
+| RF-29 | Reemplazado por la alerta de confirmación |
+| NF-01 a NF-13 | Hechos |
+| NF-14 | Hecho (service worker: la app abre sin conexión; subir y entregar necesitan internet) |
+| T-01 | Reemplazado (no hay PDF) |
+| T-02, T-03 | Hechos |
+
+## 3. Decisiones pendientes del documento (sección 12)
+
+| Decisión | Resolución |
+|---|---|
+| Lista final de categorías | 21 categorías; cada tablero toma 9 al azar según el UUID |
+| Bloquear el tablero al finalizar | Sí, con opción de reabrir |
+| Fecha y hora de cierre | Sin corte programado: se acuerda de palabra |
+| ¿El PDF se sube o se descarga? | No hay PDF: lo reemplaza la revisión |
+
+## 4. Stack (diferencias)
+
+- **Sin `@react-pdf/renderer`.**
+- **`lucide-react`** para los íconos.
+- **Service worker propio** (`public/sw.js`) en lugar de Serwist o next-pwa.
+- **Rutas propias:** `DELETE /api/fotos` (borrar fotos de UploadThing) y `/api/entregas` (subir, retirar y listar entregas). Son rutas y no Server Actions porque las Server Actions se rechazan detrás de un proxy como los dev tunnels.
+- El estado que vive en localStorage (elección, cambios, votos) se lee con `useSyncExternalStore`: Next 16 deja las páginas visitadas ocultas con su estado (`<Activity>`) y sin esto mostraban datos viejos.
+
+## 5. Limitaciones conocidas
+
+- **La elección no viaja en el respaldo:** si alguien cambia de celular después de entregar, tiene que volver a elegir (la entrega en la revisión no se pierde).
+- **Las entregas nuevas pueden tardar unos minutos** en aparecer en la revisión (demora del listado de UploadThing).
+- **Los votos viven en un solo dispositivo.**
+- **Seguridad mínima (NF-08):** quien conozca el código de otro jugador podría retirar o reemplazar su entrega.
+- **Sin conexión** se puede abrir la app, ver el tablero y sacar fotos; subir, entregar y la revisión necesitan internet.
+
+## 6. Pendiente
+
+- Probar en iPhone y Android reales con la URL de Vercel.
+- Después del fin de semana (NF-09): guardar el resultado, bajar las fotos que se quieran conservar y borrarlas de UploadThing.
