@@ -11,12 +11,14 @@ type TableroProps = {
     urlDeFoto: (foto: Foto) => string;
     onAgregarFotos: (categoria: string, archivos: File[]) => void;
     onPedirBorrado: (foto: Foto) => void;
+    // Con el tablero cerrado cada celda muestra su foto elegida y no se puede tocar
+    elegidas?: Record<string, string>;
 };
 
 const MILISEGUNDOS_MANTENER = 550;
 const TOLERANCIA_MOVIMIENTO = 10;
 
-export default function Tablero({ uuid, fotos, urlDeFoto, onAgregarFotos, onPedirBorrado }: TableroProps) {
+export default function Tablero({ uuid, fotos, urlDeFoto, onAgregarFotos, onPedirBorrado, elegidas }: TableroProps) {
     const categorias = generarTablero(uuid);
     const presion = useRef<{ temporizador: number; x: number; y: number } | null>(null);
     // Evita que el toque largo abra además el selector de fotos
@@ -48,6 +50,22 @@ export default function Tablero({ uuid, fotos, urlDeFoto, onAgregarFotos, onPedi
                 const fotosCelda = fotos.filter((foto) => foto.categoria === categoria);
                 const ultima = fotosCelda.at(-1);
                 const pendientes = fotosCelda.filter((foto) => foto.estado === "pendiente").length;
+
+                if (elegidas) {
+                    const elegida = fotosCelda.find((foto) => foto.id === elegidas[categoria]);
+                    return (
+                        <li key={categoria} className={styles.celda}>
+                            <div className={styles.boton} aria-label={`${categoria}: foto elegida`}>
+                                {elegida && (
+                                    // eslint-disable-next-line @next/next/no-img-element -- vista previa de un blob local
+                                    <img src={urlDeFoto(elegida)} alt="" className={styles.miniatura} draggable={false} />
+                                )}
+                                <span className={styles.categoria}>{categoria}</span>
+                                <span className={styles.estadoElegida} aria-hidden="true">★</span>
+                            </div>
+                        </li>
+                    );
+                }
 
                 return (
                     <li key={categoria} className={styles.celda}>
