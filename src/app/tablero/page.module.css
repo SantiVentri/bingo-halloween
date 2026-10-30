@@ -18,12 +18,3 @@
     width: 100%;
     height: auto;
 }
-
-/* Interior de la grilla roja de la imagen, en % para que coincida en cualquier ancho */
-.grilla {
-    position: absolute;
-    left: 6.5%;
-    top: 33.75%;
-    width: 87.8%;
-    height: 58.15%;
-}

@@ -1,0 +1,31 @@
+/* Franja libre entre el título "BINGO" y la grilla de la imagen */
+.barra {
+    position: absolute;
+    left: 6.5%;
+    top: 27%;
+    width: 87.8%;
+    height: 5%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2cqw;
+}
+
+.saludo {
+    font-size: 4cqw;
+    font-weight: bold;
+    color: var(--color-texto);
+    text-shadow: 0 0 0.6cqw var(--color-sombra);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Interior de la grilla roja de la imagen, en % para que coincida en cualquier ancho */
+.grilla {
+    position: absolute;
+    left: 6.5%;
+    top: 33.75%;
+    width: 87.8%;
+    height: 58.15%;
+}

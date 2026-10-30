@@ -26,9 +26,6 @@ export type Categoria = (typeof CATEGORIAS)[number];
 
 const TAMANO_TABLERO = 9;
 
-// UUID fijo para probar el tablero hasta que exista el jugador (Sprint 2)
-export const UUID_DEMO = "00000000-0000-4000-8000-000000000000";
-
 // Convierte el UUID en un número de 32 bits (hash FNV-1a)
 function hashSemilla(texto: string): number {
   let hash = 0x811c9dc5;
