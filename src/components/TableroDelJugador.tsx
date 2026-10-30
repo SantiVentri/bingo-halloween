@@ -11,8 +11,9 @@ import ConfirmarBorrado from "@/components/ConfirmarBorrado";
 import Confirmacion from "@/components/Confirmacion";
 import { obtenerJugador, type Jugador } from "@/lib/jugador";
 import type { Foto } from "@/lib/fotos";
-import { generarTablero } from "@/lib/tablero";
+import { CAMBIOS_MAXIMOS, generarTablero, sortearCategoria } from "@/lib/tablero";
 import { guardarEleccion, obtenerEleccion } from "@/lib/eleccion";
+import { guardarCambios, obtenerCambios } from "@/lib/cambios";
 import { useFotos } from "@/hooks/useFotos";
 
 // Lee el jugador de localStorage; sin jugador ofrece volver al ingreso (RF-02)
@@ -38,15 +39,41 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
         reintentar,
         urlDeFoto,
         eliminarFoto,
+        avisar,
     } = useFotos(jugador.uuid);
     const [porBorrar, setPorBorrar] = useState<Foto | null>(null);
     // Al confirmar la elección el tablero se cierra; se puede reabrir hasta el informe
     const [eleccion, setEleccion] = useState(() => obtenerEleccion(jugador.uuid));
     const [reabriendo, setReabriendo] = useState(false);
+    // Hasta 2 cambios de una celda por una categoría al azar, sin deshacer
+    const [cambios, setCambios] = useState(() => obtenerCambios(jugador.uuid));
+    const [modoCambio, setModoCambio] = useState(false);
+    // Se congela al abrir la alerta para que su texto no cambie mientras se borran las fotos
+    const [aCambiar, setACambiar] = useState<
+        { posicion: number; categoria: string; cantidadFotos: number; restantes: number } | null
+    >(null);
     const cerrado = eleccion.confirmadaEn !== null;
+    const categorias = generarTablero(jugador.uuid, cambios);
+    const cambiosRestantes = CAMBIOS_MAXIMOS - cambios.length;
     const pendientes = fotos.filter((foto) => foto.estado === "pendiente").length;
-    const completas = generarTablero(jugador.uuid)
+    const completas = categorias
         .filter((categoria) => fotos.some((foto) => foto.categoria === categoria)).length;
+    const fotosACambiar = fotos.filter((foto) => foto.categoria === aCambiar?.categoria);
+
+    // Primero borra las fotos de la celda (del celular y de UploadThing); si alguna
+    // falla, la categoría no cambia y el aviso de error queda en el tablero
+    async function cambiarCategoria() {
+        if (!aCambiar) return;
+        for (const foto of fotosACambiar) {
+            if (!(await eliminarFoto(foto))) return;
+        }
+        const nueva = sortearCategoria(jugador.uuid, cambios);
+        const actualizados = [...cambios, { posicion: aCambiar.posicion, categoria: nueva }];
+        guardarCambios(jugador.uuid, actualizados);
+        setCambios(actualizados);
+        setModoCambio(false);
+        avisar(`🎲 «${aCambiar.categoria}» ahora es «${nueva}»`);
+    }
 
     function reabrir() {
         const abierta = { ...eleccion, confirmadaEn: null };
@@ -64,7 +91,7 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
                 </span>
                 <div className={styles.acciones}>
                     {/* Reintento manual de las fotos pendientes (RF-11) */}
-                    {pendientes > 0 && (
+                    {pendientes > 0 && !modoCambio && (
                         <button
                             type="button"
                             className={styles.reintentar}
@@ -74,17 +101,40 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
                             {subiendo ? "Subiendo…" : `Reintentar (${pendientes})`}
                         </button>
                     )}
-                    <Respaldo jugador={jugador} fotos={fotos} />
+                    {!cerrado && cambiosRestantes > 0 && (
+                        <button
+                            type="button"
+                            className={modoCambio ? `${styles.cambiar} ${styles.cambiarActivo}` : styles.cambiar}
+                            aria-pressed={modoCambio}
+                            aria-label={modoCambio
+                                ? "Cancelar el cambio de categoría"
+                                : `Cambiar una categoría por otra al azar. Quedan ${cambiosRestantes}`}
+                            onClick={() => setModoCambio(!modoCambio)}
+                        >
+                            {modoCambio
+                                ? "Cancelar"
+                                : pendientes > 0 ? `🎲 ${cambiosRestantes}` : `🎲 Cambiar (${cambiosRestantes})`}
+                        </button>
+                    )}
+                    <Respaldo jugador={jugador} fotos={fotos} cambios={cambios} />
                 </div>
             </div>
             <div className={styles.grilla}>
                 <Tablero
-                    uuid={jugador.uuid}
+                    categorias={categorias}
                     fotos={fotos}
                     urlDeFoto={urlDeFoto}
                     onAgregarFotos={agregarFotos}
                     onPedirBorrado={setPorBorrar}
                     elegidas={cerrado ? eleccion.elegidas : undefined}
+                    onElegirCambio={modoCambio && !cerrado
+                        ? (posicion) => setACambiar({
+                            posicion,
+                            categoria: categorias[posicion],
+                            cantidadFotos: fotos.filter((foto) => foto.categoria === categorias[posicion]).length,
+                            restantes: cambiosRestantes,
+                        })
+                        : undefined}
                 />
             </div>
             <ConfirmarBorrado
@@ -95,7 +145,9 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
                 onCerrar={() => setPorBorrar(null)}
             />
             <div className={styles.pie}>
-                <p className={styles.aviso} role="status">{aviso}</p>
+                <p className={styles.aviso} role="status">
+                    {modoCambio ? "🎲 Tocá la celda que querés cambiar" : aviso}
+                </p>
                 {cerrado ? (
                     <div className={styles.cerrado}>
                         <span>🔒 Tablero cerrado</span>
@@ -106,9 +158,25 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
                 ) : null}
             </div>
             {/* Con las 9 celdas completas aparece Finalizar en el medio de la pantalla (RF-15, RF-26) */}
-            {!cerrado && completas === 9 && (
+            {!cerrado && !modoCambio && completas === 9 && (
                 <Link href="/finalizar" className={styles.finalizar}>¡Bingo! Finalizar</Link>
             )}
+            <Confirmacion
+                abierta={aCambiar !== null}
+                titulo={`¿Cambiar «${aCambiar?.categoria}» por una categoría al azar?`}
+                texto={`${!aCambiar || aCambiar.cantidadFotos === 0
+                    ? ""
+                    : aCambiar.cantidadFotos === 1
+                        ? "Se va a borrar la foto de esta celda. "
+                        : `Se van a borrar las ${aCambiar.cantidadFotos} fotos de esta celda. `}${aCambiar && aCambiar.restantes > 1
+                    ? `Te va a quedar ${aCambiar.restantes - 1} cambio.`
+                    : "Es tu último cambio."} No se puede deshacer.`}
+                accion="Cambiar"
+                accionEnCurso="Cambiando…"
+                peligro={(aCambiar?.cantidadFotos ?? 0) > 0}
+                onConfirmar={cambiarCategoria}
+                onCerrar={() => setACambiar(null)}
+            />
             <Confirmacion
                 abierta={reabriendo}
                 titulo="¿Reabrir tu tablero?"

@@ -130,3 +130,20 @@
     font-size: 3.5cqw;
     cursor: pointer;
 }
+
+.cambiar {
+    padding: 1cqw 2.5cqw;
+    border: 0.4cqw solid var(--color-calabaza);
+    border-radius: 2cqw;
+    background-color: var(--color-sombra);
+    color: var(--color-texto);
+    font: inherit;
+    font-size: 3.5cqw;
+    font-weight: bold;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.cambiarActivo {
+    background-color: var(--color-calabaza);
+}

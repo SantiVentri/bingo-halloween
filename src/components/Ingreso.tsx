@@ -13,6 +13,7 @@ import {
     type Jugador,
 } from "@/lib/jugador";
 import { importarFotos } from "@/lib/fotos";
+import { guardarCambios } from "@/lib/cambios";
 import { fotosDelRespaldo, leerRespaldo } from "@/lib/respaldo";
 
 // seguir: ya hay jugador en este dispositivo · nuevo: primer ingreso
@@ -62,6 +63,8 @@ export default function Ingreso() {
         if (respaldo) {
             try {
                 await importarFotos(respaldo.uuid, fotosDelRespaldo(respaldo));
+                // Sin cambios en el respaldo se conservan los que ya hubiera en este dispositivo
+                if (respaldo.cambios.length > 0) guardarCambios(respaldo.uuid, respaldo.cambios);
             } catch {
                 setError("No se pudieron guardar las fotos del respaldo en este dispositivo.");
                 return;

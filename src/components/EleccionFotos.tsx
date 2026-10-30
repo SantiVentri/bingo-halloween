@@ -10,6 +10,7 @@ import Carrusel from "@/components/Carrusel";
 import Confirmacion from "@/components/Confirmacion";
 import { obtenerJugador, type Jugador } from "@/lib/jugador";
 import { generarTablero } from "@/lib/tablero";
+import { obtenerCambios } from "@/lib/cambios";
 import { completarElegidas, guardarEleccion, obtenerEleccion } from "@/lib/eleccion";
 import type { Foto } from "@/lib/fotos";
 import { useFotos } from "@/hooks/useFotos";
@@ -53,7 +54,7 @@ function Eleccion({ jugador }: { jugador: Jugador }) {
         return <p className={styles.cargando}>Cargando tus fotos…</p>;
     }
 
-    const categorias: readonly string[] = generarTablero(jugador.uuid);
+    const categorias: readonly string[] = generarTablero(jugador.uuid, obtenerCambios(jugador.uuid));
     const fotosDe = (categoria: string) => fotos.filter((foto) => foto.categoria === categoria);
     const completas = categorias.filter((categoria) => fotosDe(categoria).length > 0).length;
 

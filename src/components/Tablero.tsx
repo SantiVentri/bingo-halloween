@@ -2,24 +2,32 @@
 
 import { useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import styles from "./Tablero.module.css";
-import { generarTablero } from "@/lib/tablero";
 import type { Foto } from "@/lib/fotos";
 
 type TableroProps = {
-    uuid: string;
+    categorias: readonly string[];
     fotos: Foto[];
     urlDeFoto: (foto: Foto) => string;
     onAgregarFotos: (categoria: string, archivos: File[]) => void;
     onPedirBorrado: (foto: Foto) => void;
     // Con el tablero cerrado cada celda muestra su foto elegida y no se puede tocar
     elegidas?: Record<string, string>;
+    // En modo cambio, tocar una celda la elige para cambiar su categoría
+    onElegirCambio?: (posicion: number) => void;
 };
 
 const MILISEGUNDOS_MANTENER = 550;
 const TOLERANCIA_MOVIMIENTO = 10;
 
-export default function Tablero({ uuid, fotos, urlDeFoto, onAgregarFotos, onPedirBorrado, elegidas }: TableroProps) {
-    const categorias = generarTablero(uuid);
+export default function Tablero({
+    categorias,
+    fotos,
+    urlDeFoto,
+    onAgregarFotos,
+    onPedirBorrado,
+    elegidas,
+    onElegirCambio,
+}: TableroProps) {
     const presion = useRef<{ temporizador: number; x: number; y: number } | null>(null);
     // Evita que el toque largo abra además el selector de fotos
     const seMantuvo = useRef(false);
@@ -46,10 +54,30 @@ export default function Tablero({ uuid, fotos, urlDeFoto, onAgregarFotos, onPedi
             aria-label="Tablero de bingo"
             style={{ "--mantener": `${MILISEGUNDOS_MANTENER}ms` } as CSSProperties}
         >
-            {categorias.map((categoria) => {
+            {categorias.map((categoria, posicion) => {
                 const fotosCelda = fotos.filter((foto) => foto.categoria === categoria);
                 const ultima = fotosCelda.at(-1);
                 const pendientes = fotosCelda.filter((foto) => foto.estado === "pendiente").length;
+
+                if (onElegirCambio) {
+                    return (
+                        <li key={categoria} className={styles.celda}>
+                            <button
+                                type="button"
+                                className={`${styles.boton} ${styles.cambiable}`}
+                                aria-label={`Cambiar la categoría ${categoria}`}
+                                onClick={() => onElegirCambio(posicion)}
+                            >
+                                {ultima && (
+                                    // eslint-disable-next-line @next/next/no-img-element -- vista previa de un blob local
+                                    <img src={urlDeFoto(ultima)} alt="" className={styles.miniatura} draggable={false} />
+                                )}
+                                <span className={styles.categoria}>{categoria}</span>
+                                <span className={styles.estadoCambio} aria-hidden="true">🎲</span>
+                            </button>
+                        </li>
+                    );
+                }
 
                 if (elegidas) {
                     const elegida = fotosCelda.find((foto) => foto.id === elegidas[categoria]);

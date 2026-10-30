@@ -19,6 +19,8 @@ type UsoFotos = {
     reintentar: () => void;
     urlDeFoto: (foto: Foto) => string;
     eliminarFoto: (foto: Foto) => Promise<boolean>;
+    // Muestra un aviso en el tablero
+    avisar: (texto: string) => void;
 };
 
 // Fotos del jugador: se guardan primero en IndexedDB, se muestran al instante
@@ -203,5 +205,6 @@ export function useFotos(uuid: string): UsoFotos {
         reintentar: subirPendientes,
         urlDeFoto,
         eliminarFoto,
+        avisar: setAviso,
     };
 }

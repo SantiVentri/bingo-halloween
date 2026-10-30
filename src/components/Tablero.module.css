@@ -135,3 +135,30 @@ div.boton:active {
 .estadoElegida {
     background-color: var(--color-calabaza);
 }
+
+/* Modo cambio: las celdas se marcan para elegir cuál cambiar */
+.cambiable {
+    border: none;
+    background: none;
+    font: inherit;
+}
+
+/* El borde va en ::after para quedar por encima de la foto */
+.cambiable::after {
+    inset: 1.2cqw;
+    border: 0.8cqw dashed var(--color-calabaza);
+    background: none;
+    opacity: 1;
+    transform: none;
+}
+
+.cambiable:active {
+    background-color: rgba(240, 135, 42, 0.25);
+}
+
+.estadoCambio {
+    position: absolute;
+    top: 4%;
+    right: 4%;
+    font-size: 4cqw;
+}

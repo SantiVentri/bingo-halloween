@@ -7,16 +7,18 @@ import BotonCopiar from "@/components/BotonCopiar";
 import { generarRespaldo } from "@/lib/respaldo";
 import type { Jugador } from "@/lib/jugador";
 import type { Foto } from "@/lib/fotos";
+import type { Cambio } from "@/lib/tablero";
 
 type RespaldoProps = {
     jugador: Jugador;
     fotos: Foto[];
+    cambios: readonly Cambio[];
 };
 
 // Botón del tablero que abre el código y el respaldo de fotos en un diálogo (RF-03, RF-21)
-export default function Respaldo({ jugador, fotos }: RespaldoProps) {
+export default function Respaldo({ jugador, fotos, cambios }: RespaldoProps) {
     const dialogo = useRef<HTMLDialogElement>(null);
-    const respaldo = generarRespaldo(jugador, fotos);
+    const respaldo = generarRespaldo(jugador, fotos, cambios);
     const pendientes = fotos.filter((foto) => foto.estado === "pendiente").length;
 
     return (
