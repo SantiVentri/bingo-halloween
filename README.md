@@ -33,9 +33,9 @@ Pensada para un grupo cerrado de amigos y para usarse durante el fin de semana d
 | Área | Tecnología |
 |---|---|
 | Framework | [Next.js 16](https://nextjs.org) (App Router, Cache Components) + React 19 + TypeScript |
-| Estilos | CSS Modules y variables CSS con la paleta del póster |
-| Tipografías | Luckiest Guy (títulos) y Nunito (texto), con `next/font` |
-| Íconos | [lucide-react](https://lucide.dev) |
+| Estilos | CSS Modules y variables CSS en `globals.css` |
+| Tipografías | Rubik Wet Paint (logo), Anton (títulos y botones) y Nunito Sans (texto), con `next/font` |
+| Íconos | [lucide-react](https://lucide.dev) e ilustraciones SVG propias en `components/ilustraciones` |
 | Base de datos | [Supabase](https://supabase.com): Postgres con reglas de seguridad (RLS), Realtime y Storage para las fotos |
 | Identidad | Usuario anónimo de Supabase por navegador (sin email) + código de recuperación |
 | Datos locales | IndexedDB: copia de las fotos y cola de las que todavía no subieron |
@@ -50,7 +50,7 @@ Requisitos: Node.js 20 o superior y un proyecto de Supabase.
 npm install
 ```
 
-1. En Supabase, aplicar la migración `supabase/migrations/20261030120000_inicial.sql` (SQL Editor, o `npx supabase db push` con el proyecto vinculado). Crea las tablas, las reglas, las funciones, el bucket `fotos` y Realtime.
+1. En Supabase, aplicar en orden las migraciones de `supabase/migrations/`: `20261030120000_inicial.sql` y `20261031120000_no_votar_propias.sql` (SQL Editor, o `npx supabase db push` con el proyecto vinculado). Crean las tablas, las reglas, las funciones, el bucket `fotos` y Realtime.
 2. Habilitar **Anonymous sign-ins** en *Authentication → Sign In / Providers*.
 3. Crear `.env.local` (y cargar lo mismo en Vercel):
 
@@ -86,7 +86,6 @@ src/
 ├── hooks/                    # useFotos (fotos y subidas) y useTableroRemoto (estado en la base)
 └── lib/                      # Lógica: tablero, jugador, fotos, revisión y clientes de Supabase
 public/
-├── Bingo Halloween.jpg       # El póster del tablero
 └── sw.js                     # Service worker (sin conexión)
 supabase/
 └── migrations/               # Esquema de la base, reglas y funciones

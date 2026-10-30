@@ -2,10 +2,10 @@
 // El tablero y las fotos ya viven en el celular (localStorage e IndexedDB):
 // alcanza con guardar las páginas y los archivos de la app.
 // Subir fotos, entregar y la revisión siguen necesitando internet.
-const CACHE = "bingo-v1";
+const CACHE = "bingo-v2";
 const PAGINAS = ["/", "/tablero", "/finalizar", "/revision"];
 
-// Archivos de la app que aparecen en el HTML: código, estilos, fuentes y el póster
+// Archivos de la app que aparecen en el HTML: código, estilos y fuentes
 function archivosDelHtml(html) {
   const encontrados = html.match(/\/_next\/(?:static\/[^"'\s)]+|image\?[^"'\s)]+)/g) ?? [];
   return [...new Set(encontrados.map((ruta) => ruta.replaceAll("&amp;", "&")))];
@@ -67,7 +67,7 @@ self.addEventListener("fetch", (evento) => {
   const pedido = evento.request;
   const url = new URL(pedido.url);
   // Solo lecturas de este sitio. Quedan afuera la API, las subidas, las fotos de
-  // UploadThing y los pedidos internos de navegación de Next (RSC): si fallan sin
+  // Supabase y los pedidos internos de navegación de Next (RSC): si fallan sin
   // conexión, Next navega de forma normal y se sirve la página guardada
   if (pedido.method !== "GET" || url.origin !== self.location.origin) return;
   if (url.pathname.startsWith("/api/") || pedido.headers.has("RSC") || url.searchParams.has("_rsc")) return;
