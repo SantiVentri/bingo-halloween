@@ -1,4 +1,5 @@
 import { CAMBIOS_MAXIMOS, CATEGORIAS, type Cambio } from "@/lib/tablero";
+import { avisarCambioAlmacen, leerAlmacen } from "@/lib/almacen";
 
 // Cambios de categoría del jugador, en localStorage, uno por UUID
 const PREFIJO = "bingo-halloween:cambios:";
@@ -17,10 +18,13 @@ export function esCambio(valor: unknown): valor is Cambio {
   );
 }
 
-// Solo en el navegador
-export function obtenerCambios(uuid: string): Cambio[] {
+export function claveCambios(uuid: string): string {
+  return PREFIJO + uuid;
+}
+
+export function interpretarCambios(texto: string | null): Cambio[] {
   try {
-    const guardados: unknown = JSON.parse(localStorage.getItem(PREFIJO + uuid) ?? "[]");
+    const guardados: unknown = JSON.parse(texto ?? "[]");
     return Array.isArray(guardados) && guardados.every(esCambio)
       ? guardados.slice(0, CAMBIOS_MAXIMOS)
       : [];
@@ -29,6 +33,12 @@ export function obtenerCambios(uuid: string): Cambio[] {
   }
 }
 
+// Solo en el navegador
+export function obtenerCambios(uuid: string): Cambio[] {
+  return interpretarCambios(leerAlmacen(claveCambios(uuid)));
+}
+
 export function guardarCambios(uuid: string, cambios: Cambio[]): void {
-  localStorage.setItem(PREFIJO + uuid, JSON.stringify(cambios.slice(0, CAMBIOS_MAXIMOS)));
+  localStorage.setItem(claveCambios(uuid), JSON.stringify(cambios.slice(0, CAMBIOS_MAXIMOS)));
+  avisarCambioAlmacen();
 }
