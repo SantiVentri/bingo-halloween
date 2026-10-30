@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Luckiest_Guy, Nunito } from "next/font/google";
 import "./globals.css";
 import Avisos from "@/components/Avisos";
+import RegistrarServiceWorker from "@/components/RegistrarServiceWorker";
 
 // Parecidas a las del póster: Luckiest Guy para "BINGO" y los títulos, Nunito (redondeada) para el resto
 const luckiest = Luckiest_Guy({
@@ -31,6 +32,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="es" className={`${luckiest.variable} ${nunito.variable}`}>
       <body>
         <Avisos>{children}</Avisos>
+        <RegistrarServiceWorker />
       </body>
     </html>
   );

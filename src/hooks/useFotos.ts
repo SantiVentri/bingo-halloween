@@ -155,12 +155,17 @@ export function useFotos(uuid: string): UsoFotos {
         };
     }, [uuid, subirPendientes, avisar]);
 
-    // Reintento automático al recuperar la conexión (RF-12)
+    // Reintento automático al recuperar la conexión (RF-12) y aviso al perderla
     useEffect(() => {
         const alVolver = () => subirPendientes();
+        const alCortarse = () => avisar({ texto: "Sin conexión: tus fotos se guardan en el celular y se suben cuando vuelva." });
         window.addEventListener("online", alVolver);
-        return () => window.removeEventListener("online", alVolver);
-    }, [subirPendientes]);
+        window.addEventListener("offline", alCortarse);
+        return () => {
+            window.removeEventListener("online", alVolver);
+            window.removeEventListener("offline", alCortarse);
+        };
+    }, [subirPendientes, avisar]);
 
     // Libera las vistas previas al salir del tablero
     useEffect(() => {
