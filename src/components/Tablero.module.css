@@ -31,6 +31,12 @@
     -webkit-touch-callout: none;
 }
 
+div.boton,
+div.boton:active {
+    background: none;
+    cursor: default;
+}
+
 /* Respuesta al toque: la celda se aclara apenas */
 .boton:active {
     background-color: rgba(255, 255, 255, 0.08);
@@ -109,7 +115,8 @@
 }
 
 .estadoSubida,
-.estadoPendiente {
+.estadoPendiente,
+.estadoElegida {
     position: absolute;
     right: 3%;
     bottom: 3%;
@@ -124,6 +131,7 @@
     background-color: var(--color-sombra);
 }
 
-.estadoPendiente {
+.estadoPendiente,
+.estadoElegida {
     background-color: var(--color-calabaza);
 }

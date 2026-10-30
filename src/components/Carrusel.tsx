@@ -1,31 +1,35 @@
 'use client'
 
 import { useEffect, useRef, useState, type MouseEvent } from "react";
-import styles from "./Visor.module.css";
+import styles from "./Carrusel.module.css";
 import type { Foto } from "@/lib/fotos";
 
-type VisorProps = {
+type CarruselProps = {
     fotos: Foto[];
     indiceInicial: number;
     urlDeFoto: (foto: Foto) => string;
-    onCerrar: () => void;
+    onCambiar: (indice: number) => void;
 };
 
 const AUMENTO = 2.5;
 
-// Fotos de la celda a pantalla completa: se desliza entre fotos y un toque
-// hace zoom; con zoom se recorre la foto arrastrando (RF-27)
-export default function Visor({ fotos, indiceInicial, urlDeFoto, onCerrar }: VisorProps) {
-    const dialogo = useRef<HTMLDialogElement>(null);
+// Fotos de una celda en grande: se desliza entre fotos y un toque hace zoom;
+// con zoom se recorre la foto arrastrando (RF-27)
+export default function Carrusel({ fotos, indiceInicial, urlDeFoto, onCambiar }: CarruselProps) {
     const pista = useRef<HTMLDivElement>(null);
     const [indice, setIndice] = useState(indiceInicial);
     const [conZoom, setConZoom] = useState(false);
 
     useEffect(() => {
-        dialogo.current?.showModal();
         const elemento = pista.current;
         if (elemento) elemento.scrollLeft = indiceInicial * elemento.clientWidth;
     }, [indiceInicial]);
+
+    function cambiar(nuevo: number) {
+        setIndice(nuevo);
+        setConZoom(false);
+        onCambiar(nuevo);
+    }
 
     function irA(destino: number) {
         const elemento = pista.current;
@@ -38,10 +42,7 @@ export default function Visor({ fotos, indiceInicial, urlDeFoto, onCerrar }: Vis
         const elemento = pista.current;
         if (!elemento) return;
         const actual = Math.round(elemento.scrollLeft / elemento.clientWidth);
-        if (actual !== indice) {
-            setIndice(actual);
-            setConZoom(false);
-        }
+        if (actual !== indice) cambiar(actual);
     }
 
     // Al hacer zoom, centra la parte de la foto que se tocó
@@ -64,15 +65,15 @@ export default function Visor({ fotos, indiceInicial, urlDeFoto, onCerrar }: Vis
     }
 
     return (
-        <dialog
-            ref={dialogo}
-            className={styles.visor}
-            onClose={onCerrar}
+        <div
+            className={styles.carrusel}
+            tabIndex={0}
+            aria-roledescription="carrusel"
+            aria-label={`Foto ${indice + 1} de ${fotos.length}`}
             onKeyDown={(evento) => {
                 if (evento.key === "ArrowLeft") irA(indice - 1);
                 if (evento.key === "ArrowRight") irA(indice + 1);
             }}
-            aria-label="Fotos a pantalla completa"
         >
             <div
                 ref={pista}
@@ -90,24 +91,30 @@ export default function Visor({ fotos, indiceInicial, urlDeFoto, onCerrar }: Vis
                                 className={styles.imagen}
                                 style={ampliada ? { width: `${AUMENTO * 100}%`, height: `${AUMENTO * 100}%` } : undefined}
                                 onClick={alternarZoom}
+                                draggable={false}
                             />
+                            {foto.estado === "pendiente" && <span className={styles.pendiente}>⏳ Sin subir</span>}
                         </div>
                     );
                 })}
             </div>
 
-            <div className={styles.barra}>
-                <button type="button" className={styles.boton} onClick={() => irA(indice - 1)} disabled={indice === 0} aria-label="Foto anterior">
-                    ‹
-                </button>
-                <span className={styles.posicion}>{indice + 1} / {fotos.length}</span>
-                <button type="button" className={styles.boton} onClick={() => irA(indice + 1)} disabled={indice === fotos.length - 1} aria-label="Foto siguiente">
-                    ›
-                </button>
-                <button type="button" className={styles.boton} onClick={() => dialogo.current?.close()} aria-label="Cerrar">
-                    ✕
-                </button>
-            </div>
-        </dialog>
+            {fotos.length > 1 && (
+                <div className={styles.barra}>
+                    <button type="button" className={styles.boton} onClick={() => irA(indice - 1)} disabled={indice === 0} aria-label="Foto anterior">
+                        ‹
+                    </button>
+                    <span className={styles.puntos} aria-hidden="true">
+                        {fotos.map((foto, posicion) => (
+                            <span key={foto.id} className={posicion === indice ? styles.puntoActual : styles.punto} />
+                        ))}
+                    </span>
+                    <span className={styles.posicion}>{indice + 1}/{fotos.length}</span>
+                    <button type="button" className={styles.boton} onClick={() => irA(indice + 1)} disabled={indice === fotos.length - 1} aria-label="Foto siguiente">
+                        ›
+                    </button>
+                </div>
+            )}
+        </div>
     );
 }

@@ -1,0 +1,15 @@
+.page {
+    display: flex;
+    justify-content: center;
+    min-height: 100dvh;
+    padding: 16px;
+}
+
+.main {
+    width: min(100%, 480px);
+}
+
+.cargando {
+    text-align: center;
+    color: var(--color-hueso);
+}

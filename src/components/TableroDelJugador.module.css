@@ -64,20 +64,69 @@
     cursor: default;
 }
 
-/* Tapa la frase del pie de la imagen solo mientras hay un aviso */
-.aviso {
+/* Debajo de la grilla, sobre la frase del pie de la imagen */
+.pie {
     position: absolute;
     left: 6.5%;
-    top: 93%;
+    top: 92.5%;
     width: 87.8%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5cqw;
+}
+
+.aviso {
     font-size: 3.2cqw;
     font-weight: bold;
     text-align: center;
     color: var(--color-texto);
 }
 
+.aviso:empty {
+    display: none;
+}
+
 .aviso:not(:empty) {
     padding: 1cqw 2cqw;
     border-radius: 2cqw;
     background-color: var(--color-fondo);
+}
+
+/* En el centro de la grilla: left 6.5% + 87.8% / 2 y top 33.75% + 58.15% / 2 */
+.finalizar {
+    position: absolute;
+    top: 62.825%;
+    left: 50.4%;
+    z-index: 1;
+    padding: 2.5cqw 6cqw;
+    border-radius: 3cqw;
+    background-color: var(--color-sangre);
+    color: var(--color-texto);
+    font-size: 4.5cqw;
+    font-weight: bold;
+    white-space: nowrap;
+    transform: translate(-50%, -50%);
+}
+
+.cerrado {
+    display: flex;
+    align-items: center;
+    gap: 3cqw;
+    padding: 1.5cqw 3cqw;
+    border-radius: 3cqw;
+    background-color: var(--color-fondo);
+    font-size: 3.8cqw;
+    font-weight: bold;
+}
+
+.reabrir {
+    padding: 1cqw 3cqw;
+    border: 1px solid var(--color-hueso);
+    border-radius: 2cqw;
+    background: none;
+    color: var(--color-texto);
+    font: inherit;
+    font-size: 3.5cqw;
+    cursor: pointer;
 }

@@ -2,23 +2,28 @@
 
 import { use, useState } from "react";
 import { browser } from "react-dom";
-import { redirect } from "next/navigation";
+import Link from "next/link";
+import SinJugador from "@/components/SinJugador";
 import styles from "./TableroDelJugador.module.css";
 import Tablero from "@/components/Tablero";
 import Respaldo from "@/components/Respaldo";
 import ConfirmarBorrado from "@/components/ConfirmarBorrado";
+import Confirmacion from "@/components/Confirmacion";
 import { obtenerJugador, type Jugador } from "@/lib/jugador";
 import type { Foto } from "@/lib/fotos";
 import { generarTablero } from "@/lib/tablero";
+import { guardarEleccion, obtenerEleccion } from "@/lib/eleccion";
 import { useFotos } from "@/hooks/useFotos";
 
-// Lee el jugador de localStorage; sin jugador vuelve al ingreso (RF-02)
+// Lee el jugador de localStorage; sin jugador ofrece volver al ingreso (RF-02)
 export default function TableroDelJugador() {
     use(browser("El jugador se guarda en localStorage"));
 
+    // Sin jugador no se redirige: el router recordaría la redirección y la
+    // repetiría después de crear el jugador
     const jugador = obtenerJugador();
     if (!jugador) {
-        redirect("/");
+        return <SinJugador />;
     }
 
     return <TableroConFotos jugador={jugador} />;
@@ -35,9 +40,19 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
         eliminarFoto,
     } = useFotos(jugador.uuid);
     const [porBorrar, setPorBorrar] = useState<Foto | null>(null);
+    // Al confirmar la elección el tablero se cierra; se puede reabrir hasta el informe
+    const [eleccion, setEleccion] = useState(() => obtenerEleccion(jugador.uuid));
+    const [reabriendo, setReabriendo] = useState(false);
+    const cerrado = eleccion.confirmadaEn !== null;
     const pendientes = fotos.filter((foto) => foto.estado === "pendiente").length;
     const completas = generarTablero(jugador.uuid)
         .filter((categoria) => fotos.some((foto) => foto.categoria === categoria)).length;
+
+    function reabrir() {
+        const abierta = { ...eleccion, confirmadaEn: null };
+        guardarEleccion(jugador.uuid, abierta);
+        setEleccion(abierta);
+    }
 
     return (
         <>
@@ -69,6 +84,7 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
                     urlDeFoto={urlDeFoto}
                     onAgregarFotos={agregarFotos}
                     onPedirBorrado={setPorBorrar}
+                    elegidas={cerrado ? eleccion.elegidas : undefined}
                 />
             </div>
             <ConfirmarBorrado
@@ -78,7 +94,30 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
                 onConfirmar={eliminarFoto}
                 onCerrar={() => setPorBorrar(null)}
             />
-            <p className={styles.aviso} role="status">{aviso}</p>
+            <div className={styles.pie}>
+                <p className={styles.aviso} role="status">{aviso}</p>
+                {cerrado ? (
+                    <div className={styles.cerrado}>
+                        <span>🔒 Tablero cerrado</span>
+                        <button type="button" className={styles.reabrir} onClick={() => setReabriendo(true)}>
+                            Reabrir
+                        </button>
+                    </div>
+                ) : null}
+            </div>
+            {/* Con las 9 celdas completas aparece Finalizar en el medio de la pantalla (RF-15, RF-26) */}
+            {!cerrado && completas === 9 && (
+                <Link href="/finalizar" className={styles.finalizar}>¡Bingo! Finalizar</Link>
+            )}
+            <Confirmacion
+                abierta={reabriendo}
+                titulo="¿Reabrir tu tablero?"
+                texto="Vas a poder agregar y borrar fotos otra vez. Después tenés que volver a confirmar tus 9 fotos."
+                accion="Reabrir"
+                accionEnCurso="Reabriendo…"
+                onConfirmar={reabrir}
+                onCerrar={() => setReabriendo(false)}
+            />
         </>
     );
 }

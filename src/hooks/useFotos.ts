@@ -11,6 +11,8 @@ const AVISO_MANTENER = "Tip: mantené apretada una celda para borrar su última 
 
 type UsoFotos = {
     fotos: Foto[];
+    // true hasta leer las fotos guardadas en IndexedDB
+    cargando: boolean;
     subiendo: boolean;
     aviso: string;
     agregarFotos: (categoria: string, archivos: File[]) => Promise<void>;
@@ -23,6 +25,7 @@ type UsoFotos = {
 // y después se suben a UploadThing. Si falla, quedan pendientes (RF-06 a RF-13, NF-10)
 export function useFotos(uuid: string): UsoFotos {
     const [fotos, setFotos] = useState<Foto[]>([]);
+    const [cargando, setCargando] = useState(true);
     const [subiendo, setSubiendo] = useState(false);
     const [aviso, setAviso] = useState("");
     const enCurso = useRef(false);
@@ -111,9 +114,14 @@ export function useFotos(uuid: string): UsoFotos {
             .then((guardadas) => {
                 if (!vigente) return;
                 setFotos(guardadas);
+                setCargando(false);
                 if (guardadas.some((foto) => foto.estado === "pendiente")) subirPendientes();
             })
-            .catch(() => vigente && setAviso("No se pudieron leer las fotos guardadas en este dispositivo."));
+            .catch(() => {
+                if (!vigente) return;
+                setCargando(false);
+                setAviso("No se pudieron leer las fotos guardadas en este dispositivo.");
+            });
         return () => {
             vigente = false;
         };
@@ -188,6 +196,7 @@ export function useFotos(uuid: string): UsoFotos {
 
     return {
         fotos,
+        cargando,
         subiendo,
         aviso,
         agregarFotos,
