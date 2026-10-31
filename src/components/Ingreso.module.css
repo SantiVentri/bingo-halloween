@@ -82,3 +82,22 @@
     height: 1px;
     background-color: var(--borde);
 }
+
+.seccion {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.subtitulo {
+    font-size: 17px;
+    font-weight: 800;
+}
+
+/* Código del grupo dentro de un texto */
+.codigoGrupo {
+    font-family: var(--fuente-mono);
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+}

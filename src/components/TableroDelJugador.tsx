@@ -3,13 +3,14 @@
 import { use, useCallback, useState, type CSSProperties, type ReactNode } from "react";
 import { browser } from "react-dom";
 import { useRouter } from "next/navigation";
-import { CloudUpload, Dices, Ellipsis, Hand, Lock, PartyPopper, RefreshCw, UserX } from "lucide-react";
+import { CloudUpload, Dices, Ellipsis, Hand, Lock, PartyPopper, RefreshCw, UserX, Vote } from "lucide-react";
 import styles from "./TableroDelJugador.module.css";
 import SinJugador from "@/components/SinJugador";
 import MarcoTablero from "@/components/MarcoTablero";
 import Tablero from "@/components/Tablero";
 import MenuTablero from "@/components/MenuTablero";
 import Respaldo from "@/components/Respaldo";
+import DialogoGrupo from "@/components/DialogoGrupo";
 import CompartirTablero from "@/components/CompartirTablero";
 import ConfirmarBorrado from "@/components/ConfirmarBorrado";
 import Confirmacion from "@/components/Confirmacion";
@@ -18,7 +19,7 @@ import Calabaza from "@/components/ilustraciones/Calabaza";
 import Boton from "@/components/ui/Boton";
 import PantallaMensaje from "@/components/ui/PantallaMensaje";
 import { useAvisos } from "@/components/Avisos";
-import { obtenerJugador, olvidarJugador, type Jugador } from "@/lib/jugador";
+import { ErrorDeGrupo, obtenerJugador, olvidarJugador, type Jugador } from "@/lib/jugador";
 import type { Foto } from "@/lib/fotos";
 import { armarCeldas } from "@/lib/imagenTablero";
 import { CAMBIOS_MAXIMOS, CELDAS_TABLERO, generarTablero } from "@/lib/tablero";
@@ -54,12 +55,13 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
     const avisar = useAvisos();
     const router = useRouter();
     // Cambios, elección y entrega vienen de la base y se actualizan en vivo
-    const { estado, recargar } = useTableroRemoto(jugador.id);
+    const { estado, recargar } = useTableroRemoto(jugador.id, jugador.grupo.id);
     const tablero = estado.tipo === "listo" ? estado.tablero : null;
     const cambios = tablero?.cambios ?? [];
 
     const [menuAbierto, setMenuAbierto] = useState(false);
     const [respaldoAbierto, setRespaldoAbierto] = useState(false);
+    const [grupoAbierto, setGrupoAbierto] = useState(false);
     const [compartirAbierto, setCompartirAbierto] = useState(false);
     const [porBorrar, setPorBorrar] = useState<Foto | null>(null);
     const [reabriendo, setReabriendo] = useState(false);
@@ -73,6 +75,8 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
     >(null);
 
     const cerrado = Boolean(tablero?.entregadoEn);
+    // El creador del grupo cerró las entregas: no se entrega ni se reabre más
+    const entregasCerradas = Boolean(tablero?.entregasCerradas);
     const categorias = generarTablero(jugador.id, cambios);
     const cambiosRestantes = CAMBIOS_MAXIMOS - cambios.length;
     const pendientes = fotos.filter((foto) => foto.estado === "pendiente").length;
@@ -119,8 +123,13 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
     async function reabrir() {
         try {
             await reabrirTablero(jugador.id);
-        } catch {
-            avisar({ tipo: "error", texto: "No se pudo reabrir. Revisá la conexión y probá de nuevo." });
+        } catch (error) {
+            avisar({
+                tipo: "error",
+                texto: error instanceof ErrorDeGrupo
+                    ? "El grupo ya cerró las entregas: tu tablero no se puede reabrir."
+                    : "No se pudo reabrir. Revisá la conexión y probá de nuevo.",
+            });
         }
         await recargar();
     }
@@ -182,11 +191,25 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
                 <Boton variante="secundario" onClick={() => setModoCambio(false)}>Cancelar</Boton>
             </>
         );
+    } else if (cerrado && entregasCerradas) {
+        pie = (
+            <>
+                <Estado icono={<Vote />} titulo="Entregas cerradas" detalle="Votá las fotos de los demás" />
+                <Boton variante="secundario" onClick={() => router.push("/revision")}>Votar</Boton>
+            </>
+        );
     } else if (cerrado) {
         pie = (
             <>
                 <Estado icono={<Lock />} titulo="Tablero entregado" detalle="Ya está en la revisión del grupo" />
                 <Boton variante="secundario" onClick={() => setReabriendo(true)}>Reabrir</Boton>
+            </>
+        );
+    } else if (entregasCerradas) {
+        pie = (
+            <>
+                <Estado icono={<Lock />} titulo="El grupo cerró las entregas" detalle="Ya no podés entregar, pero sí mirar la revisión" alerta />
+                <Boton variante="secundario" onClick={() => router.push("/revision")}>Revisión</Boton>
             </>
         );
     } else if (pendientes > 0) {
@@ -230,7 +253,7 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
                         : undefined}
                 />
                 {/* Con todas las celdas completas aparece Finalizar en el centro de la grilla (RF-15, RF-26) */}
-                {!cerrado && !modoCambio && completas === CELDAS_TABLERO && (
+                {!cerrado && !entregasCerradas && !modoCambio && completas === CELDAS_TABLERO && (
                     <div className={styles.finalizar}>
                         <Boton href="/finalizar">¡Bingo! Finalizar</Boton>
                     </div>
@@ -245,12 +268,19 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
                 cerrado={cerrado}
                 hayFotos={fotos.length > 0}
                 cambiosRestantes={cambiosRestantes}
+                codigoGrupo={jugador.grupo.codigo}
                 puedeCompartir={celdasACompartir !== null}
                 onCompartir={() => setCompartirAbierto(true)}
+                onGrupo={() => setGrupoAbierto(true)}
                 onRespaldo={() => setRespaldoAbierto(true)}
                 onCambiar={() => setModoCambio(true)}
                 onBorrarTodo={() => setBorrandoTodo(fotos.length)}
                 onRevision={() => router.push("/revision")}
+            />
+            <DialogoGrupo
+                abierto={grupoAbierto}
+                onCerrar={() => setGrupoAbierto(false)}
+                jugador={jugador}
             />
             <Respaldo
                 abierto={respaldoAbierto}
@@ -301,7 +331,7 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
             <Confirmacion
                 abierta={reabriendo}
                 titulo="¿Reabrir tu tablero?"
-                texto={`Tu entrega sale de la revisión y vas a poder agregar y borrar fotos otra vez. Después tenés que volver a confirmar tus ${CELDAS_TABLERO} fotos.`}
+                texto={`Tu entrega sale de la revisión, se borran los votos que hiciste y vas a poder agregar y borrar fotos otra vez. Después tenés que volver a confirmar tus ${CELDAS_TABLERO} fotos.`}
                 accion="Reabrir"
                 accionEnCurso="Reabriendo…"
                 onConfirmar={reabrir}

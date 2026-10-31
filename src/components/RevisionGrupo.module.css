@@ -24,102 +24,39 @@
     color: var(--sangre);
 }
 
+.grupo {
+    margin-top: 6px;
+    color: var(--texto-suave);
+    font-size: 14px;
+}
+
+.grupoCodigo {
+    font-family: var(--fuente-mono);
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    color: var(--texto);
+}
+
 .bajada {
     margin-top: 8px;
     color: var(--texto-suave);
 }
 
-/* Podio: lápidas de distinta altura según el puesto */
-.podio {
-    text-align: center;
-}
-
-.ganadorNombre {
-    font-family: var(--fuente-titulo);
-    font-size: 32px;
-    line-height: 1.1;
-    letter-spacing: 0.02em;
-}
-
-.ganadorDetalle {
-    font-size: 14px;
-    color: var(--texto-suave);
-}
-
-.lapidas {
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    gap: 8px;
-    margin-top: 36px;
-    border-bottom: 4px solid var(--sangre);
-}
-
-.lapida {
-    position: relative;
+.faltan {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    flex: 0 1 100px;
-    min-width: 0;
-    padding: 14px 6px 0;
-    border-radius: 50px 50px 0 0;
-    background-color: var(--hueso);
-    color: var(--tinta);
-    font-family: var(--fuente-titulo);
-    font-size: 16px;
-    line-height: 1.2;
-}
-
-.lapidaPrimero {
-    height: 164px;
-    padding-top: 22px;
-    background-color: var(--sangre);
-    color: var(--sobre-sangre);
-}
-
-.lapidaSegundo {
-    height: 122px;
-}
-
-.lapidaTercero {
-    height: 96px;
-}
-
-.lapidaCalabaza {
-    position: absolute;
-    top: -30px;
-    left: 50%;
-    width: 40px;
-    height: 40px;
-    margin-left: -20px;
-    color: var(--calabaza);
-}
-
-.lapidaPuesto {
-    font-size: 30px;
-    line-height: 1;
-    color: var(--sangre-presionada);
-}
-
-.lapidaPrimero .lapidaPuesto {
-    color: var(--tinta);
-}
-
-.lapidaNombre {
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.faltan {
+    gap: 4px;
     padding: 12px 14px;
     border-radius: var(--radio-m);
     background-color: var(--superficie);
     color: var(--texto-suave);
     font-size: 15px;
     text-align: center;
+}
+
+.faltanMios {
+    color: var(--texto);
+    font-weight: 700;
 }
 
 .ranking {
@@ -375,4 +312,57 @@
     font-size: 14px;
     font-weight: 700;
     text-align: center;
+}
+
+/* Foto que no se pudo firmar o descargar */
+.sinImagen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 160px;
+    color: var(--texto-suave);
+    font-size: 14px;
+}
+
+.sinImagen svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Conteo anónimo de la foto */
+.conteo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 8px 14px 0;
+    font-size: 14px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+.conteo svg {
+    width: 16px;
+    height: 16px;
+}
+
+.conteoVale,
+.conteoNoVale {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.conteoVale svg {
+    color: var(--exito);
+}
+
+.conteoNoVale svg {
+    color: var(--peligro);
+}
+
+.conteoFaltan {
+    margin-left: auto;
+    color: var(--texto-suave);
+    font-weight: 600;
 }

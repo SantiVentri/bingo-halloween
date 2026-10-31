@@ -12,7 +12,7 @@ import Confirmacion from "@/components/Confirmacion";
 import PantallaMensaje from "@/components/ui/PantallaMensaje";
 import Boton from "@/components/ui/Boton";
 import { useAvisos } from "@/components/Avisos";
-import { obtenerJugador, type Jugador } from "@/lib/jugador";
+import { ErrorDeGrupo, obtenerJugador, type Jugador } from "@/lib/jugador";
 import { CELDAS_TABLERO, LADO_TABLERO, generarTablero } from "@/lib/tablero";
 import { completarElegidas } from "@/lib/eleccion";
 import { armarCeldas } from "@/lib/imagenTablero";
@@ -43,7 +43,7 @@ function Eleccion({ jugador }: { jugador: Jugador }) {
     const avisar = useAvisos();
     const { fotos, cargando, subiendo, reintentar, urlDeFoto } = useFotos(jugador.id);
     // Cambios, elección y entrega vienen de la base
-    const { estado, recargar } = useTableroRemoto(jugador.id);
+    const { estado, recargar } = useTableroRemoto(jugador.id, jugador.grupo.id);
     // Elecciones hechas acá que todavía no se guardaron (fotos sin subir)
     const [elegidasLocales, setElegidasLocales] = useState<Record<string, string>>({});
     const [vista, setVista] = useState<Vista | null>(null);
@@ -96,8 +96,22 @@ function Eleccion({ jugador }: { jugador: Jugador }) {
             <PantallaMensaje
                 icono={<Lock />}
                 titulo="Tu tablero ya está cerrado"
-                texto="Para cambiar alguna foto, reabrilo desde el tablero."
+                texto={estado.tablero.entregasCerradas
+                    ? "El grupo ya cerró las entregas: ahora toca votar."
+                    : "Para cambiar alguna foto, reabrilo desde el tablero."}
                 accion={<Boton href="/tablero">Ir al tablero</Boton>}
+            />
+        );
+    }
+
+    // Llegó tarde: el creador del grupo ya cerró las entregas
+    if (estado.tipo === "listo" && estado.tablero.entregasCerradas) {
+        return (
+            <PantallaMensaje
+                icono={<Lock />}
+                titulo="El grupo cerró las entregas"
+                texto="Ya no se pueden entregar tableros, pero podés mirar las fotos del grupo en la revisión."
+                accion={<Boton href="/revision">Ir a la revisión</Boton>}
             />
         );
     }
@@ -178,9 +192,15 @@ function Eleccion({ jugador }: { jugador: Jugador }) {
         try {
             await guardarElegidas(jugador.id, elegidas);
             await entregarTablero(jugador.id);
-        } catch {
+        } catch (error) {
             setRecienEntregado(false);
-            avisar({ tipo: "error", texto: "No se pudo entregar tu tablero. Revisá la conexión y probá de nuevo." });
+            avisar({
+                tipo: "error",
+                texto: error instanceof ErrorDeGrupo
+                    ? "El grupo ya cerró las entregas: tu tablero no se puede entregar."
+                    : "No se pudo entregar tu tablero. Revisá la conexión y probá de nuevo.",
+            });
+            await recargar();
             return;
         }
         await recargar();

@@ -1,79 +1,50 @@
 'use client'
 
-import { use, useCallback, useEffect, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import { browser } from "react-dom";
-import { ArrowLeft, ArrowRight, Check, ChevronRight, RefreshCw, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, ArrowRight, Check, ChevronRight, ImageOff, RefreshCw, Trophy, X } from "lucide-react";
 import styles from "./RevisionGrupo.module.css";
 import Boton from "@/components/ui/Boton";
 import PantallaMensaje from "@/components/ui/PantallaMensaje";
-import BotonCopiar from "@/components/BotonCopiar";
+import SinJugador from "@/components/SinJugador";
 import { useAvisos } from "@/components/Avisos";
-import Calabaza from "@/components/ilustraciones/Calabaza";
 import Fantasma from "@/components/ilustraciones/Fantasma";
-import { supabase } from "@/lib/supabase/cliente";
-import { obtenerJugador } from "@/lib/jugador";
+import { obtenerJugador, type Jugador } from "@/lib/jugador";
 import { CELDAS_TABLERO } from "@/lib/tablero";
 import {
-    horaUltimaFoto,
-    leerRevision,
-    votar,
-    type EntregaEnRevision,
+    armarRanking,
+    cantidadDeVotantes,
+    formatearHora,
+    hayResultado,
+    misVotosFaltantes,
+    SIN_VOTOS,
+    votosFaltantes,
+    type Conteo,
+    type FilaRanking,
     type FotoEnRevision,
     type Votos,
 } from "@/lib/revision";
+import { useRevision } from "@/hooks/useRevision";
 
-type Fila = {
-    entrega: EntregaEnRevision;
-    validas: number;
-    votadas: number;
-    ultimaFoto: number;
-};
-
-function formatearHora(milisegundos: number): string {
-    return new Date(milisegundos).toLocaleString("es-AR", {
-        day: "2-digit",
-        month: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-    });
-}
-
-// Gana quien tenga más fotos válidas; si empatan, quien subió su última foto antes
-function armarRanking(entregas: EntregaEnRevision[], votos: Votos): Fila[] {
-    return entregas
-        .map((entrega) => ({
-            entrega,
-            validas: entrega.fotos.filter((foto) => votos[foto.id] === true).length,
-            votadas: entrega.fotos.filter((foto) => votos[foto.id] !== undefined).length,
-            ultimaFoto: horaUltimaFoto(entrega),
-        }))
-        .sort((a, b) =>
-            b.validas - a.validas
-            || a.ultimaFoto - b.ultimaFoto
-            || a.entrega.nombre.localeCompare(b.entrega.nombre));
-}
-
-function textoResultado(ranking: Fila[], completo: boolean): string {
-    const lineas = ranking.map((fila, posicion) =>
-        `${posicion + 1}. ${fila.entrega.nombre}: ${fila.validas}/${CELDAS_TABLERO} válidas · última foto ${formatearHora(fila.ultimaFoto)}`);
-    const cierre = completo ? `🏆 Ganó ${ranking[0].entrega.nombre}` : "Faltan votos: resultado parcial";
-    return ["🎃 Resultado Bingo Halloween", ...lineas, cierre].join("\n");
-}
-
-type EstadoCarga =
-    | { tipo: "cargando" }
-    | { tipo: "error" }
-    | { tipo: "listo"; entregas: EntregaEnRevision[]; votos: Votos };
-
-// Revisión del grupo (reemplaza al informe PDF): se ven las entregas de todos y se
-// decide si cada foto vale. Los votos van a la base y se ven en vivo en todos los
-// dispositivos que tengan la revisión abierta
+// Revisión del grupo (reemplaza al informe PDF): se ven las entregas del grupo y
+// cada uno vota las fotos de los demás. Los conteos se ven en vivo en todos los
+// dispositivos que tengan la revisión abierta. Cuando el creador cerró las entregas
+// y están todos los votos, se pasa solo a la pantalla del ganador
 export default function RevisionGrupo() {
     use(browser("La sesión de Supabase vive en el navegador"));
 
+    const jugador = obtenerJugador();
+    if (!jugador) {
+        return <SinJugador />;
+    }
+    return <RevisionDelGrupo jugador={jugador} />;
+}
+
+function RevisionDelGrupo({ jugador }: { jugador: Jugador }) {
     const avisar = useAvisos();
-    const [carga, setCarga] = useState<EstadoCarga>({ tipo: "cargando" });
+    const router = useRouter();
+    const { estado, recargar, cambiarVoto } = useRevision(jugador.id, jugador.grupo.id);
     const [revisando, setRevisando] = useState<string | null>(null);
 
     // Resultados y jugador comparten la página: al pasar de uno a otro se vuelve arriba,
@@ -82,62 +53,27 @@ export default function RevisionGrupo() {
         window.scrollTo(0, 0);
     }, [revisando]);
 
-    // Si falla una actualización, se siguen mostrando los datos que ya había
-    const recargar = useCallback(async () => {
-        try {
-            const { entregas, votos } = await leerRevision();
-            setCarga({ tipo: "listo", entregas, votos });
-        } catch {
-            setCarga((anterior) => (anterior.tipo === "listo" ? anterior : { tipo: "error" }));
-        }
-    }, []);
-
-    // Carga inicial y actualización en vivo: votos nuevos y tableros que se entregan o reabren
+    // Si la votación termina con la revisión abierta, se va al ganador. Si ya había
+    // terminado al entrar, no: se vino a mirar las fotos
+    const completo = estado.tipo === "listo" ? hayResultado(estado.revision) : null;
+    const completoAntes = useRef<boolean | null>(null);
     useEffect(() => {
-        let vigente = true;
-        let temporizador: number | undefined;
-        leerRevision()
-            .then(({ entregas, votos }) => vigente && setCarga({ tipo: "listo", entregas, votos }))
-            .catch(() => vigente && setCarga({ tipo: "error" }));
-        const enUnRato = () => {
-            window.clearTimeout(temporizador);
-            temporizador = window.setTimeout(recargar, 300);
-        };
-        const canal = supabase()
-            .channel("revision")
-            .on("postgres_changes", { event: "*", schema: "public", table: "votos" }, enUnRato)
-            .on("postgres_changes", { event: "*", schema: "public", table: "jugadores" }, enUnRato)
-            .subscribe();
-        window.addEventListener("focus", enUnRato);
-        return () => {
-            vigente = false;
-            window.clearTimeout(temporizador);
-            supabase().removeChannel(canal);
-            window.removeEventListener("focus", enUnRato);
-        };
-    }, [recargar]);
+        if (completo === null) return;
+        if (completoAntes.current === false && completo) router.push("/resultado");
+        completoAntes.current = completo;
+    }, [completo, router]);
 
-    // El voto se ve al instante; si la base no lo guarda, vuelve atrás
-    async function cambiarVoto(fotoId: string, vale: boolean | null) {
-        if (carga.tipo !== "listo") return;
-        const anteriores = carga.votos;
-        const nuevos = { ...anteriores };
-        if (vale === null) delete nuevos[fotoId];
-        else nuevos[fotoId] = vale;
-        setCarga({ ...carga, votos: nuevos });
-        try {
-            await votar(fotoId, vale);
-        } catch {
-            setCarga((actual) => (actual.tipo === "listo" ? { ...actual, votos: anteriores } : actual));
+    async function votar(fotoId: string, vale: boolean | null) {
+        if (!(await cambiarVoto(fotoId, vale))) {
             avisar({ tipo: "error", texto: "No se pudo guardar el voto. Revisá la conexión y probá de nuevo." });
         }
     }
 
-    if (carga.tipo === "cargando") {
+    if (estado.tipo === "cargando") {
         return <p className={styles.cargando} role="status">Buscando las entregas…</p>;
     }
 
-    if (carga.tipo === "error") {
+    if (estado.tipo === "error") {
         return (
             <PantallaMensaje
                 icono={<RefreshCw />}
@@ -148,34 +84,41 @@ export default function RevisionGrupo() {
         );
     }
 
-    const { entregas, votos } = carga;
-    // Las fotos propias no se votan: las votan los demás
-    const miId = obtenerJugador()?.id ?? null;
+    const { entregas, conteos, misVotos, cerrado } = estado.revision;
+    const miId = jugador.id;
+    // Votan solo los que entregaron, y nunca sus propias fotos
     const entregue = entregas.some((entrega) => entrega.uuid === miId);
     if (entregas.every((entrega) => entrega.uuid === miId)) {
         return (
             <PantallaMensaje
                 icono={<Fantasma />}
-                titulo={entregue ? "Todavía nadie más cerró su tablero" : "Todavía nadie cerró su tablero"}
-                texto="Cuando alguien lo cierre, aparece acá para votar sus fotos."
+                titulo={entregue ? "Todavía nadie más del grupo entregó" : "Todavía nadie del grupo entregó"}
+                texto="Cuando alguien de tu grupo entregue su tablero, aparece acá para votar sus fotos."
                 accion={<Boton href="/tablero" variante="secundario">Ir a mi tablero</Boton>}
             />
         );
     }
 
-    const ranking = armarRanking(entregas, votos);
-    const jugador = ranking.find((fila) => fila.entrega.uuid === revisando);
-    if (jugador) {
-        const posicion = ranking.indexOf(jugador);
+    const ranking = armarRanking(entregas, conteos);
+    const votantes = cantidadDeVotantes(entregas);
+    const misFaltantes = entregue ? misVotosFaltantes(entregas, misVotos, miId) : 0;
+    const faltanEnElGrupo = votosFaltantes(entregas, conteos);
+
+    const jugadorRevisado = ranking.find((fila) => fila.entrega.uuid === revisando);
+    if (jugadorRevisado) {
+        const posicion = ranking.indexOf(jugadorRevisado);
+        const meFaltan = (fila: FilaRanking) => fila.entrega.fotos.some((foto) => misVotos[foto.id] === undefined);
         const siguiente = ranking.find((fila, indice) =>
-            indice !== posicion && fila.entrega.uuid !== miId && fila.votadas < CELDAS_TABLERO) ?? null;
+            indice !== posicion && fila.entrega.uuid !== miId && (!entregue || meFaltan(fila))) ?? null;
         return (
             <RevisionJugador
-                key={jugador.entrega.uuid}
-                fila={jugador}
-                propio={jugador.entrega.uuid === miId}
-                votos={votos}
-                onVotar={cambiarVoto}
+                key={jugadorRevisado.entrega.uuid}
+                fila={jugadorRevisado}
+                bloqueo={jugadorRevisado.entrega.uuid === miId ? "propio" : entregue ? null : "sinEntregar"}
+                votantes={votantes}
+                conteos={conteos}
+                misVotos={misVotos}
+                onVotar={votar}
                 siguiente={siguiente}
                 onVolver={() => setRevisando(null)}
                 onSiguiente={() => setRevisando(siguiente?.entrega.uuid ?? null)}
@@ -183,121 +126,111 @@ export default function RevisionGrupo() {
         );
     }
 
-    const completo = ranking.every((fila) => fila.votadas === CELDAS_TABLERO);
-    const empate = completo && ranking.length > 1 && ranking[0].validas === ranking[1].validas;
+    let situacion: string;
+    if (completo) {
+        situacion = "¡Ya votaron todos! El resultado está listo.";
+    } else if (!cerrado) {
+        situacion = "Las entregas siguen abiertas: el ganador sale cuando el creador del grupo las cierre y estén todos los votos.";
+    } else {
+        situacion = `Entregas cerradas. ${faltanEnElGrupo === 1 ? "Falta 1 voto" : `Faltan ${faltanEnElGrupo} votos`} para conocer al ganador.`;
+    }
 
     return (
         <div className={styles.resultados}>
             <header className={styles.encabezado}>
                 <h1 className={styles.titulo}>Revisión</h1>
+                <p className={styles.grupo}>Grupo <span className={styles.grupoCodigo}>{jugador.grupo.codigo}</span></p>
                 <p className={styles.bajada}>
-                    Decidan juntos si cada foto vale. Gana quien tenga más fotos válidas; si empatan,
-                    quien subió su última foto antes.
+                    Voten cada foto de los demás: vale si más de la mitad dice que vale. Gana quien tenga
+                    más fotos válidas; si empatan, quien subió su última foto antes.
                 </p>
             </header>
 
-            {completo ? (
-                <Podio ranking={ranking} empate={empate} />
-            ) : (
-                <p className={styles.faltan}>Faltan votos: tocá cada jugador para revisar sus fotos.</p>
+            <div className={styles.faltan} role="status">
+                <p>{situacion}</p>
+                {!completo && (entregue
+                    ? misFaltantes > 0 && <p className={styles.faltanMios}>{misFaltantes === 1 ? "Te falta votar 1 foto." : `Te faltan votar ${misFaltantes} fotos.`}</p>
+                    : <p className={styles.faltanMios}>Solo votan los que entregaron su tablero: podés mirar las fotos.</p>)}
+            </div>
+
+            {completo && (
+                <Boton href="/resultado" anchoCompleto icono={<Trophy />}>Ver el resultado</Boton>
             )}
 
             <ol className={styles.ranking}>
-                {ranking.map((fila, posicion) => (
-                    <li key={fila.entrega.uuid}>
-                        <button type="button" className={styles.fila} onClick={() => setRevisando(fila.entrega.uuid)}>
-                            <span className={posicion === 0 && completo ? `${styles.puesto} ${styles.puestoGanador}` : styles.puesto}>
-                                {posicion + 1}
-                            </span>
-                            <span className={styles.filaTextos}>
-                                <span className={styles.filaNombre}>
-                                    {fila.entrega.nombre}
-                                    {fila.entrega.uuid === miId && <span className={styles.vos}>Vos</span>}
+                {ranking.map((fila, posicion) => {
+                    const propio = fila.entrega.uuid === miId;
+                    const misVotadas = fila.entrega.fotos.filter((foto) => misVotos[foto.id] !== undefined).length;
+                    let detalle: string;
+                    if (propio) detalle = `Las votan los demás · ${fila.votadas}/${CELDAS_TABLERO} con todos los votos`;
+                    else if (entregue) detalle = misVotadas < CELDAS_TABLERO ? `Votaste ${misVotadas}/${CELDAS_TABLERO}` : "Ya votaste todas";
+                    else detalle = `${fila.votadas}/${CELDAS_TABLERO} con todos los votos`;
+                    return (
+                        <li key={fila.entrega.uuid}>
+                            <button type="button" className={styles.fila} onClick={() => setRevisando(fila.entrega.uuid)}>
+                                <span className={posicion === 0 && completo ? `${styles.puesto} ${styles.puestoGanador}` : styles.puesto}>
+                                    {posicion + 1}
                                 </span>
-                                <span className={styles.filaDetalle}>
-                                    {fila.votadas < CELDAS_TABLERO
-                                        ? fila.entrega.uuid === miId
-                                            ? `Las votan los demás · ${fila.votadas}/${CELDAS_TABLERO}`
-                                            : `Votadas ${fila.votadas}/${CELDAS_TABLERO}`
-                                        : `Última foto ${formatearHora(fila.ultimaFoto)}`}
+                                <span className={styles.filaTextos}>
+                                    <span className={styles.filaNombre}>
+                                        {fila.entrega.nombre}
+                                        {propio && <span className={styles.vos}>Vos</span>}
+                                    </span>
+                                    <span className={styles.filaDetalle}>{detalle}</span>
                                 </span>
-                            </span>
-                            <span className={styles.puntos} aria-label={`${fila.validas} de ${CELDAS_TABLERO} válidas`}>
-                                {fila.validas}<span>/{CELDAS_TABLERO}</span>
-                            </span>
-                            <ChevronRight className={styles.flecha} aria-hidden="true" />
-                        </button>
-                    </li>
-                ))}
+                                <span className={styles.puntos} aria-label={`${fila.validas} de ${CELDAS_TABLERO} válidas`}>
+                                    {fila.validas}<span>/{CELDAS_TABLERO}</span>
+                                </span>
+                                <ChevronRight className={styles.flecha} aria-hidden="true" />
+                            </button>
+                        </li>
+                    );
+                })}
             </ol>
-
-            <div className={styles.acciones}>
-                <BotonCopiar texto={textoResultado(ranking, completo)} etiqueta="Copiar resultado" />
-            </div>
         </div>
     );
 }
 
-// Lápidas de los tres primeros, con el ganador en el medio. Son decorativas:
-// el puesto y el puntaje de todos están en el ranking de abajo
-function Podio({ ranking, empate }: { ranking: Fila[]; empate: boolean }) {
-    const [primero, segundo, tercero] = ranking;
-    const lapidas = [
-        { fila: segundo, clase: styles.lapidaSegundo, puesto: 2 },
-        { fila: primero, clase: styles.lapidaPrimero, puesto: 1 },
-        { fila: tercero, clase: styles.lapidaTercero, puesto: 3 },
-    ];
-
-    return (
-        <section className={styles.podio}>
-            <p className={styles.ganadorNombre}>¡Ganó {primero.entrega.nombre}!</p>
-            <p className={styles.ganadorDetalle}>
-                {primero.validas}/{CELDAS_TABLERO} válidas{empate ? " · ganó el desempate por la hora de su última foto" : ""}
-            </p>
-            <div className={styles.lapidas} aria-hidden="true">
-                {lapidas.map(({ fila, clase, puesto }) => fila && (
-                    <div key={fila.entrega.uuid} className={`${styles.lapida} ${clase}`}>
-                        {puesto === 1 && <Calabaza className={styles.lapidaCalabaza} />}
-                        <span className={styles.lapidaPuesto}>{puesto}</span>
-                        <span className={styles.lapidaNombre}>{fila.entrega.nombre}</span>
-                        <span>{fila.validas}/{CELDAS_TABLERO}</span>
-                    </div>
-                ))}
-            </div>
-        </section>
-    );
-}
-
 type RevisionJugadorProps = {
-    fila: Fila;
-    // El tablero propio se ve, pero no se vota
-    propio: boolean;
-    votos: Votos;
+    fila: FilaRanking;
+    // Por qué no se puede votar: tablero propio o no entregué el mío
+    bloqueo: "propio" | "sinEntregar" | null;
+    votantes: number;
+    conteos: Record<string, Conteo>;
+    misVotos: Votos;
     onVotar: (fotoId: string, vale: boolean | null) => void;
-    siguiente: Fila | null;
+    siguiente: FilaRanking | null;
     onVolver: () => void;
     onSiguiente: () => void;
 };
 
 // Las fotos de un jugador, una abajo de la otra, con "Vale" / "No vale"
-function RevisionJugador({ fila, propio, votos, onVotar, siguiente, onVolver, onSiguiente }: RevisionJugadorProps) {
+function RevisionJugador({ fila, bloqueo, votantes, conteos, misVotos, onVotar, siguiente, onVolver, onSiguiente }: RevisionJugadorProps) {
     return (
         <div className={styles.jugador}>
             <header className={styles.encabezadoJugador}>
-                <button type="button" className={styles.volver} onClick={onVolver} aria-label="Volver a los resultados">
+                <button type="button" className={styles.volver} onClick={onVolver} aria-label="Volver a la revisión">
                     <ArrowLeft />
                 </button>
                 <div className={styles.jugadorTextos}>
                     <h1 className={styles.jugadorNombre}>{fila.entrega.nombre}</h1>
                     <span className={styles.jugadorDetalle}>
-                        {propio ? "Tus fotos las votan los demás · " : ""}{fila.validas} válidas · votadas {fila.votadas}/{CELDAS_TABLERO}
+                        {bloqueo === "propio" ? "Tus fotos las votan los demás · " : ""}{fila.validas} válidas · {fila.votadas}/{CELDAS_TABLERO} con todos los votos
                     </span>
                 </div>
             </header>
 
             <ul className={styles.fotos}>
                 {fila.entrega.fotos.map((foto) => (
-                    <FotoParaVotar key={foto.id} foto={foto} voto={votos[foto.id]} onVotar={propio ? null : onVotar} />
+                    <FotoParaVotar
+                        key={foto.id}
+                        foto={foto}
+                        conteo={conteos[foto.id] ?? SIN_VOTOS}
+                        votantes={votantes}
+                        voto={misVotos[foto.id]}
+                        bloqueo={bloqueo}
+                        onVotar={onVotar}
+                    />
                 ))}
             </ul>
 
@@ -307,7 +240,7 @@ function RevisionJugador({ fila, propio, votos, onVotar, siguiente, onVolver, on
                         Seguir con {siguiente.entrega.nombre}
                     </Boton>
                 ) : (
-                    <Boton anchoCompleto onClick={onVolver}>Ver resultados</Boton>
+                    <Boton anchoCompleto onClick={onVolver}>Volver a la revisión</Boton>
                 )}
             </div>
         </div>
@@ -316,22 +249,37 @@ function RevisionJugador({ fila, propio, votos, onVotar, siguiente, onVolver, on
 
 type FotoParaVotarProps = {
     foto: FotoEnRevision;
+    conteo: Conteo;
+    votantes: number;
     voto: boolean | undefined;
-    // null: foto propia, solo se muestra cómo la votaron los demás
-    onVotar: ((fotoId: string, vale: boolean | null) => void) | null;
+    bloqueo: "propio" | "sinEntregar" | null;
+    onVotar: (fotoId: string, vale: boolean | null) => void;
 };
 
-function FotoParaVotar({ foto, voto, onVotar }: FotoParaVotarProps) {
+function FotoParaVotar({ foto, conteo, votantes, voto, bloqueo, onVotar }: FotoParaVotarProps) {
+    const faltan = Math.max(votantes - conteo.aFavor - conteo.enContra, 0);
     return (
         <li className={styles.foto}>
-            {/* eslint-disable-next-line @next/next/no-img-element -- foto de Supabase Storage, sin optimizar */}
-            <img src={foto.url} alt={`Foto de ${foto.categoria}`} className={styles.imagen} loading="lazy" />
+            {foto.url ? (
+                // eslint-disable-next-line @next/next/no-img-element -- foto de Supabase Storage, sin optimizar
+                <img src={foto.url} alt={`Foto de ${foto.categoria}`} className={styles.imagen} loading="lazy" />
+            ) : (
+                <p className={styles.sinImagen}><ImageOff aria-hidden="true" /> No se pudo cargar la foto</p>
+            )}
             <div className={styles.fotoDatos}>
                 <span className={styles.fotoCategoria}>{foto.categoria}</span>
                 {/* Hora de subida según el servidor */}
                 <span className={styles.fotoHora}>{formatearHora(Date.parse(foto.subidaEn))}</span>
             </div>
-            {onVotar ? (
+            {/* Conteo anónimo: cuántos dijeron que vale y cuántos que no, no quién */}
+            <p className={styles.conteo}>
+                <span className={styles.conteoVale}><Check aria-hidden="true" /> {conteo.aFavor}</span>
+                <span className={styles.conteoNoVale}><X aria-hidden="true" /> {conteo.enContra}</span>
+                <span className={styles.conteoFaltan}>
+                    {faltan === 0 ? "Votaron todos" : faltan === 1 ? "Falta 1 voto" : `Faltan ${faltan} votos`}
+                </span>
+            </p>
+            {bloqueo === null ? (
                 <div className={styles.votacion} role="group" aria-label={`¿Vale la foto de ${foto.categoria}?`}>
                     <button
                         type="button"
@@ -352,9 +300,7 @@ function FotoParaVotar({ foto, voto, onVotar }: FotoParaVotarProps) {
                 </div>
             ) : (
                 <p className={styles.votoAjeno}>
-                    {voto === undefined
-                        ? "Todavía nadie la votó"
-                        : voto ? "Los demás dijeron que vale" : "Los demás dijeron que no vale"}
+                    {bloqueo === "propio" ? "Es tuya: la votan los demás" : "Solo votan los que entregaron su tablero"}
                 </p>
             )}
         </li>
