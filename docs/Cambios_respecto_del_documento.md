@@ -107,3 +107,16 @@ Función agregada: con el tablero entregado, cada jugador puede generar una imag
 - **También desde el tablero entregado:** en el menú, con la opción Compartir mi tablero.
 - **No depende de la revisión:** la imagen muestra siempre las fotos elegidas, aunque el grupo marque alguna como No vale.
 - Si las fotos no están en ese celular, hace falta conexión. Si alguna no se puede cargar, no se genera una imagen incompleta: se muestra un error con Reintentar.
+
+## 9. Grupos de amigos y votación por mayoría
+
+La revisión era una sola para todos y tenía una decisión compartida por foto (el último voto pisaba al anterior). Ahora se juega en grupos:
+
+- **Grupos:** al entrar, antes del nombre, cada jugador se suma a un grupo con su código de 6 caracteres (o el link `/?grupo=CÓDIGO`) o crea uno nuevo. Cada jugador está en un solo grupo, para siempre; el código de recuperación lo devuelve a su grupo.
+- **Privacidad:** las reglas de la base solo dejan ver los tableros, fotos, elecciones y conteos del propio grupo. El bucket de fotos pasó a ser privado: las fotos se ven con URLs firmadas, que solo se generan para el dueño y su grupo.
+- **Un voto por jugador:** votan los jugadores que entregaron, en las fotos de los demás entregados (nunca las propias). Los votos son anónimos: cada uno ve los suyos y del grupo se ven solo los conteos. Una foto vale si más de la mitad de sus votantes dice que vale; el empate no vale. Al reabrir un tablero se borran los votos que hizo ese jugador.
+- **Cierre de entregas:** el creador del grupo las cierra desde el menú (*Mi grupo*), con al menos 2 tableros entregados. Después nadie se suma, entrega ni reabre.
+- **Pantalla del ganador** (`/resultado`): con las entregas cerradas y todos los votos, se abre sola en todos los celulares. Muestra el podio, el tablero del ganador con las fotos válidas marcadas y las posiciones. El desempate sigue siendo la hora de la última foto.
+- **Base nueva:** la migración `20261101120000_grupos.sql` borra los jugadores existentes. El script `supabase/rollback/20261101120000_grupos_down.sql` deja el esquema como antes.
+
+Deja de aplicar la limitación de que cualquiera con el link podía votar en la revisión.
