@@ -4,7 +4,7 @@
 
 App web para jugar al bingo de disfraces desde el celular en una fiesta de Halloween. Cada jugador se suma a un grupo de amigos, recibe un tablero de 3×3 con categorías de disfraces y saca una foto de alguien disfrazado en cada celda. Al final, el grupo vota las fotos de todos y sale el ganador.
 
-**App:** [bingo-halloween.vercel.app](https://bingo-halloween.vercel.app) · **Versión:** 2.0.0
+**App:** [bingo-halloween.vercel.app](https://bingo-halloween.vercel.app) · **Versión:** 2.0.1
 
 Pensada para grupos de amigos y para usarse durante el fin de semana de Halloween: se entra con el código del grupo y el nombre, sin email ni contraseña. Cada grupo solo ve y vota sus propias fotos.
 
