@@ -203,7 +203,7 @@ export function useFotos(uuid: string): UsoFotos {
         };
     }, []);
 
-    // Vista previa desde el blob local si existe; si no, la URL pública de Storage
+    // Vista previa desde el blob local si existe; si no, la URL firmada de Storage
     const urlDeFoto = useCallback((foto: Foto) => {
         if (!foto.blob) return foto.url ?? "";
         let url = urlsLocales.current.get(foto.id);

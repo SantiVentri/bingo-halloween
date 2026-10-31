@@ -1,0 +1,20 @@
+.invitar {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.codigo {
+    display: block;
+    padding: 14px 16px;
+    border: 1px solid var(--borde);
+    border-radius: var(--radio-m);
+    background-color: var(--fondo);
+    font-family: var(--fuente-mono);
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: 0.25em;
+    text-align: center;
+    user-select: all;
+    -webkit-user-select: all;
+}

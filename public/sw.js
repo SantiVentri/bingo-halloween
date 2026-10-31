@@ -2,8 +2,8 @@
 // El tablero y las fotos ya viven en el celular (localStorage e IndexedDB):
 // alcanza con guardar las páginas y los archivos de la app.
 // Subir fotos, entregar y la revisión siguen necesitando internet.
-const CACHE = "bingo-v2";
-const PAGINAS = ["/", "/tablero", "/finalizar", "/revision"];
+const CACHE = "bingo-v3";
+const PAGINAS = ["/", "/tablero", "/finalizar", "/revision", "/resultado"];
 
 // Archivos de la app que aparecen en el HTML: código, estilos y fuentes
 function archivosDelHtml(html) {
@@ -11,7 +11,7 @@ function archivosDelHtml(html) {
   return [...new Set(encontrados.map((ruta) => ruta.replaceAll("&amp;", "&")))];
 }
 
-// Al instalar se guardan las 4 páginas y sus archivos, así abre sin conexión
+// Al instalar se guardan las 5 páginas y sus archivos, así abre sin conexión
 // aunque nunca se haya entrado a esa página. Si algo falla, se sigue igual
 self.addEventListener("install", (evento) => {
   evento.waitUntil((async () => {

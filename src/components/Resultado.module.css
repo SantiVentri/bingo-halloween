@@ -1,0 +1,294 @@
+.cargando {
+    padding: 48px 0;
+    text-align: center;
+    color: var(--texto-suave);
+}
+
+.resultado {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.encabezado {
+    text-align: center;
+}
+
+.titulo {
+    font-family: var(--fuente-titulo);
+    font-size: 44px;
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: 0.02em;
+    color: var(--sangre);
+}
+
+.grupo {
+    margin-top: 6px;
+    color: var(--texto-suave);
+    font-size: 14px;
+}
+
+.grupoCodigo {
+    font-family: var(--fuente-mono);
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    color: var(--texto);
+}
+
+/* Podio: lápidas de distinta altura según el puesto */
+.podio {
+    text-align: center;
+}
+
+.ganadorNombre {
+    font-family: var(--fuente-titulo);
+    font-size: 32px;
+    line-height: 1.1;
+    letter-spacing: 0.02em;
+}
+
+.ganadorDetalle {
+    font-size: 14px;
+    color: var(--texto-suave);
+}
+
+.lapidas {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 36px;
+    border-bottom: 4px solid var(--sangre);
+}
+
+.lapida {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 0 1 100px;
+    min-width: 0;
+    padding: 14px 6px 0;
+    border-radius: 50px 50px 0 0;
+    background-color: var(--hueso);
+    color: var(--tinta);
+    font-family: var(--fuente-titulo);
+    font-size: 16px;
+    line-height: 1.2;
+}
+
+.lapidaPrimero {
+    height: 164px;
+    padding-top: 22px;
+    background-color: var(--sangre);
+    color: var(--sobre-sangre);
+}
+
+.lapidaSegundo {
+    height: 122px;
+}
+
+.lapidaTercero {
+    height: 96px;
+}
+
+.lapidaCalabaza {
+    position: absolute;
+    top: -30px;
+    left: 50%;
+    width: 40px;
+    height: 40px;
+    margin-left: -20px;
+    color: var(--calabaza);
+}
+
+.lapidaPuesto {
+    font-size: 30px;
+    line-height: 1;
+    color: var(--sangre-presionada);
+}
+
+.lapidaPrimero .lapidaPuesto {
+    color: var(--tinta);
+}
+
+.lapidaNombre {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.seccion {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.subtitulo {
+    font-size: 17px;
+    font-weight: 800;
+}
+
+/* Tablero del ganador */
+.grilla {
+    display: grid;
+    grid-template-columns: repeat(var(--lado), 1fr);
+    gap: 6px;
+    list-style: none;
+}
+
+.celda {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 1;
+    border-radius: var(--radio-m);
+    background-color: var(--fondo-profundo);
+}
+
+.imagen {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.celdaNoVale .imagen {
+    filter: grayscale(1) brightness(0.45);
+}
+
+.sinImagen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--texto-suave);
+}
+
+.marca {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px 6px;
+    border-radius: var(--radio-total);
+    font-size: 12px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+.marca svg {
+    width: 12px;
+    height: 12px;
+}
+
+.marcaVale {
+    background-color: var(--exito);
+    color: var(--tinta);
+}
+
+.marcaNoVale {
+    background-color: var(--peligro);
+    color: var(--sobre-sangre);
+}
+
+.celdaCategoria {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    padding: 14px 6px 5px;
+    background: linear-gradient(to top, rgb(0 0 0 / 0.75), transparent);
+    color: var(--texto);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.15;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Posiciones */
+.ranking {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    list-style: none;
+}
+
+.fila {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid var(--borde);
+    border-radius: var(--radio-m);
+    background-color: var(--superficie);
+}
+
+.puesto {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    border-radius: var(--radio-total);
+    background-color: var(--fondo-profundo);
+    font-weight: 800;
+}
+
+.puestoGanador {
+    background-color: var(--calabaza);
+    color: var(--tinta);
+}
+
+.filaTextos {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.filaNombre {
+    font-weight: 800;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.filaDetalle {
+    font-size: 13px;
+    color: var(--texto-suave);
+}
+
+.puntos {
+    font-family: var(--fuente-titulo);
+    font-size: 26px;
+    line-height: 1;
+}
+
+.puntos span {
+    font-size: 16px;
+    color: var(--texto-suave);
+}
+
+.vos {
+    margin-left: 8px;
+    padding: 1px 8px;
+    border-radius: var(--radio-total);
+    background-color: var(--calabaza);
+    color: var(--tinta);
+    font-size: 12px;
+    font-weight: 800;
+    vertical-align: 2px;
+}
+
+.acciones {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}

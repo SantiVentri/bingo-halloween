@@ -1,4 +1,5 @@
 import { asegurarSesion, supabase } from "@/lib/supabase/cliente";
+import { ErrorDeGrupo } from "@/lib/jugador";
 import type { Cambio, Categoria } from "@/lib/tablero";
 
 // Estado del tablero en Supabase: cambios de categoría, foto elegida por celda
@@ -8,21 +9,25 @@ export type TableroRemoto = {
   // categoría → id de la foto elegida
   elegidas: Record<string, string>;
   entregadoEn: string | null;
+  // El creador del grupo cerró las entregas: ya no se entrega ni se reabre
+  entregasCerradas: boolean;
 };
 
 // null si este navegador ya no tiene acceso al jugador (por ejemplo, se borró la sesión)
-export async function leerTablero(jugadorId: string): Promise<TableroRemoto | null> {
+export async function leerTablero(jugadorId: string, grupoId: string): Promise<TableroRemoto | null> {
   await asegurarSesion();
-  const [jugador, cambios, elecciones] = await Promise.all([
+  const [jugador, cambios, elecciones, grupo] = await Promise.all([
     supabase().from("jugadores").select("entregado_en").eq("id", jugadorId).maybeSingle(),
     supabase().from("cambios").select("numero, posicion, categoria").eq("jugador_id", jugadorId).order("numero"),
     supabase().from("elecciones").select("categoria, foto_id").eq("jugador_id", jugadorId),
+    supabase().from("grupos").select("entregas_cerradas_en").eq("id", grupoId).maybeSingle(),
   ]);
-  const error = jugador.error ?? cambios.error ?? elecciones.error;
+  const error = jugador.error ?? cambios.error ?? elecciones.error ?? grupo.error;
   if (error) throw error;
   if (!jugador.data) return null;
   return {
     entregadoEn: jugador.data.entregado_en,
+    entregasCerradas: Boolean(grupo.data?.entregas_cerradas_en),
     cambios: (cambios.data ?? []).map((cambio) => ({ posicion: cambio.posicion, categoria: cambio.categoria as Categoria })),
     elegidas: Object.fromEntries((elecciones.data ?? []).map((eleccion) => [eleccion.categoria, eleccion.foto_id])),
   };
@@ -41,13 +46,17 @@ export async function guardarElegidas(jugadorId: string, elegidas: Record<string
 }
 
 // Cierra el tablero y lo entrega para la revisión; la base exige todas las elecciones
+// y que el grupo no haya cerrado las entregas (BH001)
 export async function entregarTablero(jugadorId: string): Promise<void> {
   const { error } = await supabase().rpc("entregar", { p_jugador: jugadorId });
+  if (error?.code === "BH001") throw new ErrorDeGrupo("cerrado");
   if (error) throw error;
 }
 
+// Al reabrir, también se borran los votos que hizo el jugador
 export async function reabrirTablero(jugadorId: string): Promise<void> {
   const { error } = await supabase().rpc("reabrir", { p_jugador: jugadorId });
+  if (error?.code === "BH001") throw new ErrorDeGrupo("cerrado");
   if (error) throw error;
 }
 
