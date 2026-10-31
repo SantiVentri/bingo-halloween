@@ -1,4 +1,4 @@
-/* Barra arriba, póster en el medio y barra abajo, en el alto de la pantalla */
+/* Barra arriba, grilla en el medio y barra abajo, en el alto de la pantalla */
 .pantalla {
     display: flex;
     flex-direction: column;
