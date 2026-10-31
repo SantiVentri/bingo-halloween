@@ -11,7 +11,7 @@ export default function RevisionPage() {
     return (
         <div className={styles.page}>
             <main className={styles.main}>
-                {/* Los votos viven en el localStorage de este dispositivo: se dibuja solo en el navegador */}
+                {/* La sesión de Supabase vive en el navegador: se dibuja solo ahí */}
                 <Suspense fallback={<p className={styles.cargando}>Cargando…</p>}>
                     <RevisionGrupo />
                 </Suspense>

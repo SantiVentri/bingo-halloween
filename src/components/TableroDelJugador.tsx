@@ -1,27 +1,40 @@
 'use client'
 
-import { use, useState, type ReactNode } from "react";
+import { use, useCallback, useState, type CSSProperties, type ReactNode } from "react";
 import { browser } from "react-dom";
 import { useRouter } from "next/navigation";
-import { CloudUpload, Dices, Ellipsis, Hand, Lock, PartyPopper, RefreshCw } from "lucide-react";
+import { CloudUpload, Dices, Ellipsis, Hand, Lock, PartyPopper, RefreshCw, UserX, Vote } from "lucide-react";
 import styles from "./TableroDelJugador.module.css";
 import SinJugador from "@/components/SinJugador";
 import MarcoTablero from "@/components/MarcoTablero";
 import Tablero from "@/components/Tablero";
 import MenuTablero from "@/components/MenuTablero";
 import Respaldo from "@/components/Respaldo";
+import DialogoGrupo from "@/components/DialogoGrupo";
+import CompartirTablero from "@/components/CompartirTablero";
 import ConfirmarBorrado from "@/components/ConfirmarBorrado";
 import Confirmacion from "@/components/Confirmacion";
+import Telon from "@/components/Telon";
+import Calabaza from "@/components/ilustraciones/Calabaza";
 import Boton from "@/components/ui/Boton";
+import PantallaMensaje from "@/components/ui/PantallaMensaje";
 import { useAvisos } from "@/components/Avisos";
-import { obtenerJugador, type Jugador } from "@/lib/jugador";
+import { ErrorDeGrupo, obtenerJugador, olvidarJugador, type Jugador } from "@/lib/jugador";
 import type { Foto } from "@/lib/fotos";
-import { CAMBIOS_MAXIMOS, generarTablero, sortearCategoria } from "@/lib/tablero";
-import { guardarEleccion } from "@/lib/eleccion";
-import { guardarCambios } from "@/lib/cambios";
-import { retirarEntrega } from "@/lib/entrega";
+import { armarCeldas } from "@/lib/imagenTablero";
+import { CAMBIOS_MAXIMOS, CELDAS_TABLERO, generarTablero } from "@/lib/tablero";
+import { cambiarCategoria as cambiarCategoriaRemota, reabrirTablero } from "@/lib/tableroRemoto";
 import { useFotos } from "@/hooks/useFotos";
-import { useCambios, useEleccion } from "@/hooks/useAlmacen";
+import { useTableroRemoto } from "@/hooks/useTableroRemoto";
+
+// Cada calabaza titila a su ritmo, entre 6 y 12 segundos: mezclados, parecen al azar.
+// El arranque negativo las desfasa desde el principio
+function ritmoDeCalabaza(posicion: number) {
+    return {
+        "--titilar-cada": `${6 + (posicion * 5) % 7}s`,
+        "--titilar-desde": `-${(posicion * 3) % 11}s`,
+    } as CSSProperties;
+}
 
 // Lee el jugador de localStorage; sin jugador ofrece volver al ingreso (RF-02)
 export default function TableroDelJugador() {
@@ -38,16 +51,18 @@ export default function TableroDelJugador() {
 }
 
 function TableroConFotos({ jugador }: { jugador: Jugador }) {
-    const { fotos, subiendo, agregarFotos, reintentar, urlDeFoto, eliminarFoto, eliminarTodas } = useFotos(jugador.uuid);
+    const { fotos, cargando, subiendo, agregarFotos, reintentar, urlDeFoto, eliminarFoto, eliminarTodas } = useFotos(jugador.id);
     const avisar = useAvisos();
     const router = useRouter();
-    // La elección y los cambios se leen de localStorage en cada render: así se
-    // actualizan aunque Next haya dejado esta pantalla oculta al navegar
-    const eleccion = useEleccion(jugador.uuid);
-    const cambios = useCambios(jugador.uuid);
+    // Cambios, elección y entrega vienen de la base y se actualizan en vivo
+    const { estado, recargar } = useTableroRemoto(jugador.id, jugador.grupo.id);
+    const tablero = estado.tipo === "listo" ? estado.tablero : null;
+    const cambios = tablero?.cambios ?? [];
 
     const [menuAbierto, setMenuAbierto] = useState(false);
     const [respaldoAbierto, setRespaldoAbierto] = useState(false);
+    const [grupoAbierto, setGrupoAbierto] = useState(false);
+    const [compartirAbierto, setCompartirAbierto] = useState(false);
     const [porBorrar, setPorBorrar] = useState<Foto | null>(null);
     const [reabriendo, setReabriendo] = useState(false);
     // Cantidad de fotos al abrir la alerta de borrar todo; null si está cerrada
@@ -59,55 +74,106 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
         { posicion: number; categoria: string; cantidadFotos: number; restantes: number } | null
     >(null);
 
-    const cerrado = eleccion.confirmadaEn !== null;
-    const categorias = generarTablero(jugador.uuid, cambios);
+    const cerrado = Boolean(tablero?.entregadoEn);
+    // El creador del grupo cerró las entregas: no se entrega ni se reabre más
+    const entregasCerradas = Boolean(tablero?.entregasCerradas);
+    const categorias = generarTablero(jugador.id, cambios);
     const cambiosRestantes = CAMBIOS_MAXIMOS - cambios.length;
     const pendientes = fotos.filter((foto) => foto.estado === "pendiente").length;
     const completas = categorias
         .filter((categoria) => fotos.some((foto) => foto.categoria === categoria)).length;
     const fotosACambiar = fotos.filter((foto) => foto.categoria === aCambiar?.categoria);
+    const celdasACompartir = tablero?.entregadoEn ? armarCeldas(categorias, tablero.elegidas, fotos) : null;
 
-    // Primero borra las fotos de la celda (del celular y de UploadThing); si alguna
-    // falla, la categoría no cambia y el aviso de error ya lo dio el borrado
+    // El telón cae solo al completar el tablero acá: si ya estaba completo al cargar, no.
+    // Se compara contra el valor anterior, que recién se guarda con todo cargado
+    const [completasAntes, setCompletasAntes] = useState<number | null>(null);
+    const [mostrarTelon, setMostrarTelon] = useState(false);
+    const cerrarTelon = useCallback(() => setMostrarTelon(false), []);
+    if (!cargando && tablero && completas !== completasAntes) {
+        setCompletasAntes(completas);
+        if (completasAntes !== null && completas === CELDAS_TABLERO && !cerrado) setMostrarTelon(true);
+    }
+
+    // Las fotos de la celda que todavía no subieron se borran acá; las subidas y el
+    // sorteo de la categoría nueva los hace el servidor
     async function cambiarCategoria() {
         if (!aCambiar) return;
-        for (const foto of fotosACambiar) {
+        for (const foto of fotosACambiar.filter((foto) => foto.estado === "pendiente")) {
             if (!(await eliminarFoto(foto))) return;
         }
-        const nueva = sortearCategoria(jugador.uuid, cambios);
-        guardarCambios(jugador.uuid, [...cambios, { posicion: aCambiar.posicion, categoria: nueva }]);
-        setModoCambio(false);
-        avisar({ tipo: "exito", texto: `«${aCambiar.categoria}» ahora es «${nueva}»` });
+        try {
+            const nueva = await cambiarCategoriaRemota(jugador.id, aCambiar.posicion);
+            setModoCambio(false);
+            avisar({ tipo: "exito", texto: `«${aCambiar.categoria}» ahora es «${nueva}»` });
+        } catch {
+            avisar({ tipo: "error", texto: "No se pudo cambiar la categoría. Revisá la conexión y probá de nuevo." });
+        }
+        await recargar();
     }
 
-    // Borra todas las fotos y la elección; las categorías y los cambios se mantienen
+    // Borra todas las fotos (y con ellas la elección); las categorías y los cambios se mantienen
     async function borrarTodo() {
         if (!(await eliminarTodas())) return;
-        guardarEleccion(jugador.uuid, { elegidas: {}, confirmadaEn: null });
         avisar({ tipo: "exito", texto: "Se borraron todas las fotos del tablero." });
+        await recargar();
     }
 
-    // Al reabrir, la entrega sale de la revisión hasta que se vuelva a cerrar
+    // Al reabrir, el tablero sale de la revisión hasta que se vuelva a entregar
     async function reabrir() {
-        if (!(await retirarEntrega(jugador.uuid))) {
-            avisar({ tipo: "error", texto: "No se pudo reabrir. Revisá la conexión y probá de nuevo." });
-            return;
+        try {
+            await reabrirTablero(jugador.id);
+        } catch (error) {
+            avisar({
+                tipo: "error",
+                texto: error instanceof ErrorDeGrupo
+                    ? "El grupo ya cerró las entregas: tu tablero no se puede reabrir."
+                    : "No se pudo reabrir. Revisá la conexión y probá de nuevo.",
+            });
         }
-        guardarEleccion(jugador.uuid, { ...eleccion, confirmadaEn: null });
+        await recargar();
+    }
+
+    // Este navegador perdió la sesión con la que entró: hay que volver a entrar con el código
+    if (estado.tipo === "sinAcceso") {
+        return (
+            <PantallaMensaje
+                icono={<UserX />}
+                titulo="Este celular perdió el acceso"
+                texto="Volvé a entrar con tu código de recuperación para seguir con tu tablero."
+                accion={
+                    <Boton onClick={() => {
+                        olvidarJugador();
+                        router.push("/");
+                    }}>
+                        Ir al inicio
+                    </Boton>
+                }
+            />
+        );
+    }
+
+    // Hasta saber los cambios de categoría no se dibuja la grilla (evita mostrar categorías viejas)
+    if (!tablero) {
+        return <MarcoTablero />;
     }
 
     const barra = (
         <>
-            <div className={styles.jugador}>
-                <span className={styles.nombre}>{jugador.nombre}</span>
-                {/* Contador de progreso (RF-28) */}
-                <span className={styles.progreso} aria-label={`${completas} de 9 celdas completadas`}>
-                    <span className={styles.segmentos} aria-hidden="true">
-                        {categorias.map((categoria, posicion) => (
-                            <span key={categoria} className={posicion < completas ? styles.segmentoLleno : styles.segmento} />
-                        ))}
-                    </span>
-                    <span className={styles.cuenta}>{completas}/9</span>
+            {/* Contador de progreso (RF-28) */}
+            <div className={styles.jugador} role="group" aria-label={`${completas} de ${CELDAS_TABLERO} celdas completadas`}>
+                <span className={styles.linea}>
+                    <span className={styles.nombre}>{jugador.nombre}</span>
+                    <span className={styles.cuenta} aria-hidden="true">{completas}/{CELDAS_TABLERO}</span>
+                </span>
+                <span className={styles.calabazas}>
+                    {categorias.map((categoria, posicion) => (
+                        <Calabaza
+                            key={categoria}
+                            className={posicion < completas ? styles.calabazaPrendida : styles.calabaza}
+                            style={ritmoDeCalabaza(posicion)}
+                        />
+                    ))}
                 </span>
             </div>
             <button type="button" className={styles.menu} onClick={() => setMenuAbierto(true)} aria-label="Opciones">
@@ -125,11 +191,25 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
                 <Boton variante="secundario" onClick={() => setModoCambio(false)}>Cancelar</Boton>
             </>
         );
+    } else if (cerrado && entregasCerradas) {
+        pie = (
+            <>
+                <Estado icono={<Vote />} titulo="Entregas cerradas" detalle="Votá las fotos de los demás" />
+                <Boton variante="secundario" onClick={() => router.push("/revision")}>Votar</Boton>
+            </>
+        );
     } else if (cerrado) {
         pie = (
             <>
                 <Estado icono={<Lock />} titulo="Tablero entregado" detalle="Ya está en la revisión del grupo" />
                 <Boton variante="secundario" onClick={() => setReabriendo(true)}>Reabrir</Boton>
+            </>
+        );
+    } else if (entregasCerradas) {
+        pie = (
+            <>
+                <Estado icono={<Lock />} titulo="El grupo cerró las entregas" detalle="Ya no podés entregar, pero sí mirar la revisión" alerta />
+                <Boton variante="secundario" onClick={() => router.push("/revision")}>Revisión</Boton>
             </>
         );
     } else if (pendientes > 0) {
@@ -147,7 +227,7 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
                 </Boton>
             </>
         );
-    } else if (completas === 9) {
+    } else if (completas === CELDAS_TABLERO) {
         pie = <Estado icono={<PartyPopper />} titulo="¡Completaste el tablero!" detalle="Tocá Finalizar para elegir tus fotos" />;
     } else {
         pie = <Estado icono={<Hand />} titulo="Tocá una celda para sacar una foto" detalle="Manteniéndola apretada, borrás la última" />;
@@ -155,33 +235,32 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
 
     return (
         <>
-            <MarcoTablero barra={barra} pie={pie}>
-                {/* Interior de la grilla roja del póster, en % para que coincida en cualquier ancho */}
-                <div className={styles.grilla}>
-                    <Tablero
-                        categorias={categorias}
-                        fotos={fotos}
-                        urlDeFoto={urlDeFoto}
-                        onAgregarFotos={agregarFotos}
-                        onPedirBorrado={setPorBorrar}
-                        elegidas={cerrado ? eleccion.elegidas : undefined}
-                        onElegirCambio={modoCambio && !cerrado
-                            ? (posicion) => setACambiar({
-                                posicion,
-                                categoria: categorias[posicion],
-                                cantidadFotos: fotos.filter((foto) => foto.categoria === categorias[posicion]).length,
-                                restantes: cambiosRestantes,
-                            })
-                            : undefined}
-                    />
-                </div>
-                {/* Con las 9 celdas completas aparece Finalizar en el centro de la grilla (RF-15, RF-26) */}
-                {!cerrado && !modoCambio && completas === 9 && (
+            <MarcoTablero barra={barra} pie={pie} luz={completas / CELDAS_TABLERO}>
+                <Tablero
+                    categorias={categorias}
+                    fotos={fotos}
+                    urlDeFoto={urlDeFoto}
+                    onAgregarFotos={agregarFotos}
+                    onPedirBorrado={setPorBorrar}
+                    elegidas={cerrado ? tablero.elegidas : undefined}
+                    onElegirCambio={modoCambio && !cerrado
+                        ? (posicion) => setACambiar({
+                            posicion,
+                            categoria: categorias[posicion],
+                            cantidadFotos: fotos.filter((foto) => foto.categoria === categorias[posicion]).length,
+                            restantes: cambiosRestantes,
+                        })
+                        : undefined}
+                />
+                {/* Con todas las celdas completas aparece Finalizar en el centro de la grilla (RF-15, RF-26) */}
+                {!cerrado && !entregasCerradas && !modoCambio && completas === CELDAS_TABLERO && (
                     <div className={styles.finalizar}>
                         <Boton href="/finalizar">¡Bingo! Finalizar</Boton>
                     </div>
                 )}
             </MarcoTablero>
+
+            {mostrarTelon && <Telon onTerminar={cerrarTelon} />}
 
             <MenuTablero
                 abierto={menuAbierto}
@@ -189,18 +268,33 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
                 cerrado={cerrado}
                 hayFotos={fotos.length > 0}
                 cambiosRestantes={cambiosRestantes}
+                codigoGrupo={jugador.grupo.codigo}
+                puedeCompartir={celdasACompartir !== null}
+                onCompartir={() => setCompartirAbierto(true)}
+                onGrupo={() => setGrupoAbierto(true)}
                 onRespaldo={() => setRespaldoAbierto(true)}
                 onCambiar={() => setModoCambio(true)}
                 onBorrarTodo={() => setBorrandoTodo(fotos.length)}
                 onRevision={() => router.push("/revision")}
             />
+            <DialogoGrupo
+                abierto={grupoAbierto}
+                onCerrar={() => setGrupoAbierto(false)}
+                jugador={jugador}
+            />
             <Respaldo
                 abierto={respaldoAbierto}
                 onCerrar={() => setRespaldoAbierto(false)}
-                jugador={jugador}
-                fotos={fotos}
-                cambios={cambios}
+                jugadorId={jugador.id}
             />
+            {celdasACompartir && (
+                <CompartirTablero
+                    abierto={compartirAbierto}
+                    onCerrar={() => setCompartirAbierto(false)}
+                    celdas={celdasACompartir}
+                    nombre={jugador.nombre}
+                />
+            )}
             <ConfirmarBorrado
                 foto={porBorrar}
                 fotosEnCelda={fotos.filter((foto) => foto.categoria === porBorrar?.categoria).length}
@@ -237,7 +331,7 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
             <Confirmacion
                 abierta={reabriendo}
                 titulo="¿Reabrir tu tablero?"
-                texto="Tu entrega sale de la revisión y vas a poder agregar y borrar fotos otra vez. Después tenés que volver a confirmar tus 9 fotos."
+                texto={`Tu entrega sale de la revisión, se borran los votos que hiciste y vas a poder agregar y borrar fotos otra vez. Después tenés que volver a confirmar tus ${CELDAS_TABLERO} fotos.`}
                 accion="Reabrir"
                 accionEnCurso="Reabriendo…"
                 onConfirmar={reabrir}

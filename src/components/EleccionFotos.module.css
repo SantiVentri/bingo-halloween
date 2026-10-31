@@ -106,7 +106,7 @@
 
 .grilla {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(var(--lado), 1fr);
     gap: 8px;
     list-style: none;
 }
@@ -136,7 +136,7 @@
     position: absolute;
     inset: 0;
     z-index: 1;
-    background: linear-gradient(to top, rgba(20, 12, 10, 0.85), transparent 60%);
+    background: linear-gradient(to top, var(--velo), transparent 60%);
 }
 
 button.celdaBoton {
@@ -169,7 +169,7 @@ button.celdaBoton {
     display: inline-flex;
     padding: 5px;
     border-radius: var(--radio-total);
-    background-color: rgba(20, 12, 10, 0.7);
+    background-color: var(--velo);
 }
 
 .marca svg {
@@ -179,6 +179,7 @@ button.celdaBoton {
 
 .marcaPendiente {
     background-color: var(--calabaza);
+    color: var(--tinta);
 }
 
 .avisoPendientes {
@@ -187,14 +188,14 @@ button.celdaBoton {
     gap: 10px;
     padding: 10px 10px 10px 14px;
     border-radius: var(--radio-m);
-    background-color: rgba(240, 135, 42, 0.14);
-    color: #ffd2a8;
+    background-color: var(--calabaza-tenue);
 }
 
 .avisoPendientes > svg {
     flex-shrink: 0;
     width: 20px;
     height: 20px;
+    color: var(--calabaza);
 }
 
 .avisoTexto {
