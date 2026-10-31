@@ -21,7 +21,7 @@
     border: 1px solid var(--borde);
     border-left: 4px solid var(--hueso);
     border-radius: var(--radio-m);
-    background-color: var(--superficie);
+    background-color: var(--fondo-profundo);
     box-shadow: var(--elevacion);
     font-size: 15px;
     font-weight: 600;

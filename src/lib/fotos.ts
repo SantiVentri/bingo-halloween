@@ -1,20 +1,17 @@
-// Fotos del jugador en IndexedDB (T-03, NF-04). La base de Supabase es la fuente
-// de verdad; acá queda la copia local y la cola de las que todavía no subieron:
-// una foto queda "pendiente" con su blob hasta que se registra en la base
+// Fotos del jugador guardadas en IndexedDB (T-03, NF-04)
+// Una foto queda "pendiente" con su blob hasta que UploadThing confirma la subida
 export type EstadoFoto = "pendiente" | "subida";
 
 export type Foto = {
   id: string;
-  // Id del jugador
   uuid: string;
   categoria: string;
-  // null en las fotos subidas desde otro celular: solo tienen la URL
+  // null en las fotos restauradas desde un respaldo: solo tienen la URL
   blob: Blob | null;
   estado: EstadoFoto;
   url: string | null;
   // Momento en que se eligió la foto, con el reloj del celular (RF-13)
   capturadaEn: string;
-  // Hora de subida según el servidor
   subidaEn: string | null;
 };
 
@@ -74,31 +71,13 @@ export async function borrarFoto(id: string): Promise<void> {
   await esperar(almacen.delete(id));
 }
 
-// Junta las fotos de la base con las locales y deja IndexedDB igual:
-// - las de la base se guardan (sin blob si se subieron desde otro celular);
-// - las locales ya subidas que no están en la base se borraron en otro celular;
-// - las pendientes se conservan hasta que suban
-export async function sincronizarFotos(uuid: string, remotas: Foto[]): Promise<Foto[]> {
-  const locales = await listarFotos(uuid);
-  const porId = new Map(locales.map((foto) => [foto.id, foto]));
-  const idsRemotos = new Set(remotas.map((foto) => foto.id));
+// Agrega las fotos de un respaldo, salteando las que ya están (misma URL)
+export async function importarFotos(uuid: string, fotos: Foto[]): Promise<void> {
+  const existentes = new Set((await listarFotos(uuid)).map((foto) => foto.url));
   const almacen = await abrirAlmacen("readwrite");
-  const pedidos: Promise<unknown>[] = [];
-
-  for (const local of locales) {
-    if (local.estado === "subida" && !idsRemotos.has(local.id)) pedidos.push(esperar(almacen.delete(local.id)));
-  }
-  const resultado: Foto[] = locales.filter((local) => local.estado === "pendiente" && !idsRemotos.has(local.id));
-  for (const remota of remotas) {
-    const local = porId.get(remota.id);
-    const combinada = {
-      ...remota,
-      blob: local?.blob ?? null,
-      url: remota.url ?? local?.url ?? null,
-    };
-    pedidos.push(esperar(almacen.put(combinada)));
-    resultado.push(combinada);
-  }
-  await Promise.all(pedidos);
-  return resultado.sort((a, b) => a.capturadaEn.localeCompare(b.capturadaEn));
+  await Promise.all(
+    fotos
+      .filter((foto) => !existentes.has(foto.url))
+      .map((foto) => esperar(almacen.put(foto))),
+  );
 }

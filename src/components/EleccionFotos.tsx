@@ -1,25 +1,23 @@
 'use client'
 
-import { use, useState, type CSSProperties } from "react";
+import { use, useState } from "react";
 import { browser } from "react-dom";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, CloudUpload, Lock, LockKeyhole, PartyPopper, Pencil, RefreshCw, Share2 } from "lucide-react";
+import { ArrowLeft, Check, CloudUpload, Lock, LockKeyhole, Pencil, RefreshCw } from "lucide-react";
 import styles from "./EleccionFotos.module.css";
 import SinJugador from "@/components/SinJugador";
 import Carrusel from "@/components/Carrusel";
-import CompartirTablero from "@/components/CompartirTablero";
 import Confirmacion from "@/components/Confirmacion";
 import PantallaMensaje from "@/components/ui/PantallaMensaje";
 import Boton from "@/components/ui/Boton";
 import { useAvisos } from "@/components/Avisos";
-import { ErrorDeGrupo, obtenerJugador, type Jugador } from "@/lib/jugador";
-import { CELDAS_TABLERO, LADO_TABLERO, generarTablero } from "@/lib/tablero";
-import { completarElegidas } from "@/lib/eleccion";
-import { armarCeldas } from "@/lib/imagenTablero";
-import { entregarTablero, guardarElegidas } from "@/lib/tableroRemoto";
+import { obtenerJugador, type Jugador } from "@/lib/jugador";
+import { generarTablero } from "@/lib/tablero";
+import { completarElegidas, guardarEleccion } from "@/lib/eleccion";
+import { enviarEntrega } from "@/lib/entrega";
 import type { Foto } from "@/lib/fotos";
 import { useFotos } from "@/hooks/useFotos";
-import { useTableroRemoto } from "@/hooks/useTableroRemoto";
+import { useCambios, useEleccion } from "@/hooks/useAlmacen";
 
 // Elección de la foto final de cada celda, paso a paso (RF-16, RF-17, RF-26)
 export default function EleccionFotos() {
@@ -41,114 +39,56 @@ type Vista = { tipo: "paso"; categoria: string; desdeResumen: boolean } | { tipo
 function Eleccion({ jugador }: { jugador: Jugador }) {
     const router = useRouter();
     const avisar = useAvisos();
-    const { fotos, cargando, subiendo, reintentar, urlDeFoto } = useFotos(jugador.id);
-    // Cambios, elección y entrega vienen de la base
-    const { estado, recargar } = useTableroRemoto(jugador.id, jugador.grupo.id);
-    // Elecciones hechas acá que todavía no se guardaron (fotos sin subir)
-    const [elegidasLocales, setElegidasLocales] = useState<Record<string, string>>({});
+    const { fotos, cargando, subiendo, reintentar, urlDeFoto } = useFotos(jugador.uuid);
+    // Se leen de localStorage en cada render: así se actualizan aunque Next
+    // haya dejado esta pantalla oculta al navegar
+    const eleccion = useEleccion(jugador.uuid);
+    const cambios = useCambios(jugador.uuid);
     const [vista, setVista] = useState<Vista | null>(null);
     const [confirmando, setConfirmando] = useState(false);
-    // Entregó desde esta pantalla: se festeja en lugar de avisar que ya está cerrado
-    const [recienEntregado, setRecienEntregado] = useState(false);
-    const [compartiendo, setCompartiendo] = useState(false);
-
-    if (estado.tipo === "sinAcceso") {
-        return <SinJugador />;
-    }
 
     // Con el tablero ya cerrado no hay nada que elegir. No se redirige: el router
     // recordaría la redirección y la repetiría después de reabrir el tablero
-    if (estado.tipo === "listo" && estado.tablero.entregadoEn) {
-        if (recienEntregado) {
-            const { tablero } = estado;
-            const celdas = armarCeldas(generarTablero(jugador.id, tablero.cambios), tablero.elegidas, fotos);
-            return (
-                <>
-                    <PantallaMensaje
-                        icono={<PartyPopper />}
-                        titulo="¡Tablero entregado!"
-                        texto="Llevate tus fotos de la noche para compartirlas en tus redes. Después, pasá a votar las del grupo."
-                        accion={
-                            <div className={styles.acciones}>
-                                {celdas && (
-                                    <Boton anchoCompleto icono={<Share2 />} onClick={() => setCompartiendo(true)}>
-                                        Compartir mi tablero
-                                    </Boton>
-                                )}
-                                <Boton href="/revision" variante={celdas ? "secundario" : "primario"} anchoCompleto>
-                                    Ir a la revisión
-                                </Boton>
-                            </div>
-                        }
-                    />
-                    {celdas && (
-                        <CompartirTablero
-                            abierto={compartiendo}
-                            onCerrar={() => setCompartiendo(false)}
-                            celdas={celdas}
-                            nombre={jugador.nombre}
-                        />
-                    )}
-                </>
-            );
-        }
+    if (eleccion.confirmadaEn) {
         return (
             <PantallaMensaje
                 icono={<Lock />}
                 titulo="Tu tablero ya está cerrado"
-                texto={estado.tablero.entregasCerradas
-                    ? "El grupo ya cerró las entregas: ahora toca votar."
-                    : "Para cambiar alguna foto, reabrilo desde el tablero."}
+                texto="Para cambiar alguna foto, reabrilo desde el tablero."
                 accion={<Boton href="/tablero">Ir al tablero</Boton>}
             />
         );
     }
 
-    // Llegó tarde: el creador del grupo ya cerró las entregas
-    if (estado.tipo === "listo" && estado.tablero.entregasCerradas) {
-        return (
-            <PantallaMensaje
-                icono={<Lock />}
-                titulo="El grupo cerró las entregas"
-                texto="Ya no se pueden entregar tableros, pero podés mirar las fotos del grupo en la revisión."
-                accion={<Boton href="/revision">Ir a la revisión</Boton>}
-            />
-        );
-    }
-
-    if (cargando || estado.tipo !== "listo") {
+    if (cargando) {
         return <p className={styles.cargando} role="status">Cargando tus fotos…</p>;
     }
 
-    const { tablero } = estado;
-    const categorias: readonly string[] = generarTablero(jugador.id, tablero.cambios);
+    const categorias: readonly string[] = generarTablero(jugador.uuid, cambios);
     const fotosDe = (categoria: string) => fotos.filter((foto) => foto.categoria === categoria);
     const completas = categorias.filter((categoria) => fotosDe(categoria).length > 0).length;
 
-    // Detección de tablero completo (RF-15): sin todas las celdas no se puede finalizar
+    // Detección de tablero completo (RF-15): sin las 9 no se puede finalizar
     if (completas < categorias.length) {
         return (
             <PantallaMensaje
                 icono={<LockKeyhole />}
                 titulo="Todavía no completaste el tablero"
-                texto={`Llevás ${completas} de ${CELDAS_TABLERO} celdas. Cuando tengas una foto en cada una, vas a poder finalizar.`}
+                texto={`Llevás ${completas} de 9 celdas. Cuando tengas una foto en cada una, vas a poder finalizar.`}
                 accion={<Boton href="/tablero">Volver al tablero</Boton>}
             />
         );
     }
 
     // Las celdas con una sola foto se eligen solas y se saltean
-    const elegidas = completarElegidas(categorias, fotos, { ...tablero.elegidas, ...elegidasLocales });
+    const elegidas = completarElegidas(categorias, fotos, eleccion.elegidas);
     const porElegir = categorias.filter((categoria) => fotosDe(categoria).length > 1);
     const primeraSinElegir = porElegir.find((categoria) => !elegidas[categoria]);
     const vistaActual: Vista = vista
         ?? (primeraSinElegir ? { tipo: "paso", categoria: primeraSinElegir, desdeResumen: false } : { tipo: "resumen" });
 
-    // Se guarda en la base si la foto ya subió (la elección apunta a su fila);
-    // si no, queda acá y se guarda al confirmar
     function elegir(categoria: string, foto: Foto, desdeResumen: boolean) {
-        setElegidasLocales((anteriores) => ({ ...anteriores, [categoria]: foto.id }));
-        if (foto.estado === "subida") guardarElegidas(jugador.id, { [categoria]: foto.id }).catch(() => { });
+        guardarEleccion(jugador.uuid, { elegidas: { ...elegidas, [categoria]: foto.id }, confirmadaEn: null });
         const siguiente = porElegir[porElegir.indexOf(categoria) + 1];
         setVista(!desdeResumen && siguiente
             ? { tipo: "paso", categoria: siguiente, desdeResumen: false }
@@ -184,36 +124,33 @@ function Eleccion({ jugador }: { jugador: Jugador }) {
     const sinSubir = fotosElegidas.filter((foto) => foto?.estado === "pendiente").length;
     const listas = fotosElegidas.every((foto) => foto?.estado === "subida");
 
-    // Se guardan las elegidas y se entrega; la base verifica que estén todas.
-    // Si falla, el tablero no se cierra. Se marca antes de entregar porque la
-    // actualización en vivo puede llegar antes de que termine la entrega
+    // Primero se sube la entrega para la revisión del grupo; si falla, el tablero no se cierra
     async function confirmar() {
-        setRecienEntregado(true);
-        try {
-            await guardarElegidas(jugador.id, elegidas);
-            await entregarTablero(jugador.id);
-        } catch (error) {
-            setRecienEntregado(false);
-            avisar({
-                tipo: "error",
-                texto: error instanceof ErrorDeGrupo
-                    ? "El grupo ya cerró las entregas: tu tablero no se puede entregar."
-                    : "No se pudo entregar tu tablero. Revisá la conexión y probá de nuevo.",
-            });
-            await recargar();
+        const confirmadaEn = new Date().toISOString();
+        const entregada = await enviarEntrega({
+            uuid: jugador.uuid,
+            nombre: jugador.nombre,
+            confirmadaEn,
+            fotos: fotosElegidas.flatMap((foto) => (foto?.url
+                ? [{ categoria: foto.categoria, url: foto.url, capturadaEn: foto.capturadaEn, subidaEn: foto.subidaEn }]
+                : [])),
+        });
+        if (!entregada) {
+            avisar({ tipo: "error", texto: "No se pudo entregar tu tablero. Revisá la conexión y probá de nuevo." });
             return;
         }
-        await recargar();
+        guardarEleccion(jugador.uuid, { elegidas, confirmadaEn });
+        router.push("/tablero");
     }
 
     return (
         <div className={styles.resumen}>
             <header className={styles.encabezadoResumen}>
                 <h1 className={styles.tituloGrande}>¡Bingo!</h1>
-                <p className={styles.bajada}>Estas son tus {CELDAS_TABLERO} fotos. Tocá una para cambiarla.</p>
+                <p className={styles.bajada}>Estas son tus 9 fotos. Tocá una para cambiarla.</p>
             </header>
 
-            <ul className={styles.grilla} style={{ "--lado": LADO_TABLERO } as CSSProperties}>
+            <ul className={styles.grilla}>
                 {categorias.map((categoria, posicion) => {
                     const foto = fotosElegidas[posicion];
                     const cambiable = fotosDe(categoria).length > 1;
@@ -273,7 +210,7 @@ function Eleccion({ jugador }: { jugador: Jugador }) {
             <Confirmacion
                 abierta={confirmando}
                 titulo="¿Cerrar tu tablero?"
-                texto={`Tus ${CELDAS_TABLERO} fotos se entregan para la revisión y ya no vas a poder subir ni borrar fotos. Después vas a poder compartir tu tablero y votar las fotos de los demás. Si te equivocaste, podés reabrirlo desde tu tablero.`}
+                texto="Tus 9 fotos se entregan para la revisión del grupo y ya no vas a poder subir ni borrar fotos. Si te equivocaste, podés reabrirlo."
                 accion="Cerrar y entregar"
                 accionEnCurso="Entregando…"
                 onConfirmar={confirmar}

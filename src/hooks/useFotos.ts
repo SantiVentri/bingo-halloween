@@ -2,17 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { generarUuid } from "@/lib/jugador";
-import { borrarFoto, guardarFoto, listarFotos, obtenerFoto, sincronizarFotos, type Foto } from "@/lib/fotos";
+import { borrarFoto, guardarFoto, listarFotos, obtenerFoto, type Foto } from "@/lib/fotos";
 import { comprimirImagen, TAMANO_MAXIMO } from "@/lib/imagenes";
-import { borrarFotosRemotas, descargarFotoRemota, listarFotosRemotas, subirFoto } from "@/lib/fotosRemotas";
-import { asegurarSesion, supabase } from "@/lib/supabase/cliente";
+import { borrarFotoSubida, borrarFotosSubidas, subirFoto } from "@/lib/subidas";
 import { useAvisos } from "@/components/Avisos";
 
 const CLAVE_CONSEJO = "bingo-halloween:consejo-borrar";
 
 type UsoFotos = {
     fotos: Foto[];
-    // true hasta leer las fotos (de la base o, sin conexión, del celular)
+    // true hasta leer las fotos guardadas en IndexedDB
     cargando: boolean;
     subiendo: boolean;
     agregarFotos: (categoria: string, archivos: File[]) => Promise<void>;
@@ -22,9 +21,8 @@ type UsoFotos = {
     eliminarTodas: () => Promise<boolean>;
 };
 
-// Fotos del jugador: se guardan primero en IndexedDB, se muestran al instante y
-// después se suben a Supabase. Si falla, quedan pendientes (RF-06 a RF-13, NF-10).
-// Se sincronizan en vivo con los otros celulares del mismo jugador.
+// Fotos del jugador: se guardan primero en IndexedDB, se muestran al instante
+// y después se suben a UploadThing. Si falla, quedan pendientes (RF-06 a RF-13, NF-10).
 // Los mensajes salen como avisos flotantes
 export function useFotos(uuid: string): UsoFotos {
     const [fotos, setFotos] = useState<Foto[]>([]);
@@ -58,12 +56,17 @@ export function useFotos(uuid: string): UsoFotos {
                 );
                 if (!pendiente) break;
                 try {
-                    const { url, subidaEn } = await subirFoto(pendiente);
+                    const url = await subirFoto(pendiente);
                     if (eliminadas.current.has(pendiente.id)) {
-                        borrarFotosRemotas(uuid, [pendiente.id]).catch(() => { });
+                        borrarFotoSubida(uuid, url).catch(() => { });
                         continue;
                     }
-                    const subida: Foto = { ...pendiente, estado: "subida", url, subidaEn };
+                    const subida: Foto = {
+                        ...pendiente,
+                        estado: "subida",
+                        url,
+                        subidaEn: new Date().toISOString(),
+                    };
                     await guardarFoto(subida);
                     reemplazarFoto(subida);
                 } catch {
@@ -86,13 +89,13 @@ export function useFotos(uuid: string): UsoFotos {
         }
     }, [uuid, avisar]);
 
-    // Borra primero de Supabase y después del celular (RF-14). Si la base falla,
+    // Borra primero de UploadThing y después del celular (RF-14). Si la nube falla,
     // la foto se queda para que se pueda volver a intentar y no quede huérfana
     async function eliminarFoto(foto: Foto): Promise<boolean> {
         try {
             // Se relee porque pudo haberse subido después de dibujar la celda
-            const estado = (await obtenerFoto(foto.id))?.estado ?? foto.estado;
-            if (estado === "subida") await borrarFotosRemotas(uuid, [foto.id]);
+            const url = (await obtenerFoto(foto.id))?.url ?? foto.url;
+            if (url && !(await borrarFotoSubida(uuid, url))) throw new Error("UploadThing no la borró");
             // Si se estaba subiendo justo ahora, la cola la borra de la nube al terminar
             eliminadas.current.add(foto.id);
             await borrarFoto(foto.id);
@@ -109,13 +112,15 @@ export function useFotos(uuid: string): UsoFotos {
         return true;
     }
 
-    // Borra todas las fotos del jugador: primero de Supabase (también las subidas
-    // desde otro celular) y después del celular. Si la base falla, no se borra nada
+    // Borra todas las fotos del jugador: primero de UploadThing en un solo pedido y
+    // después del celular. Si la nube falla, no se borra nada
     async function eliminarTodas(): Promise<boolean> {
         try {
-            const remotas = await listarFotosRemotas(uuid);
-            await borrarFotosRemotas(uuid, remotas.map((foto) => foto.id));
             const guardadas = await listarFotos(uuid);
+            const urls = guardadas.flatMap((foto) => (foto.url ? [foto.url] : []));
+            if (urls.length > 0 && !(await borrarFotosSubidas(uuid, urls))) {
+                throw new Error("UploadThing no las borró");
+            }
             for (const foto of guardadas) {
                 eliminadas.current.add(foto.id);
                 await borrarFoto(foto.id);
@@ -130,39 +135,15 @@ export function useFotos(uuid: string): UsoFotos {
         return true;
     }
 
-    // Junta las fotos de la base con las del celular. Sin conexión quedan las locales
-    const sincronizar = useCallback(async () => {
-        const locales = await listarFotos(uuid);
-        try {
-            await asegurarSesion();
-            const juntas = await sincronizarFotos(uuid, await listarFotosRemotas(uuid));
-            // Las fotos remotas también quedan en IndexedDB. Así una recarga,
-            // un cierre de la app o una URL firmada vencida no las deja sin vista.
-            for (const foto of juntas) {
-                if (foto.estado !== "subida" || foto.blob || !foto.url) continue;
-                try {
-                    await guardarFoto({ ...foto, blob: await descargarFotoRemota(foto) });
-                } catch {
-                    // La URL puede fallar sin conexión; se conserva la foto sin
-                    // blob para reintentar en la próxima sincronización.
-                }
-            }
-            return await listarFotos(uuid);
-        } catch {
-            return locales;
-        }
-    }, [uuid]);
-
-    // Carga las fotos e intenta subir las que quedaron pendientes
+    // Carga las fotos guardadas e intenta subir las que quedaron pendientes
     useEffect(() => {
-        navigator.storage?.persist?.().catch(() => { });
         let vigente = true;
-        sincronizar()
-            .then((juntas) => {
+        listarFotos(uuid)
+            .then((guardadas) => {
                 if (!vigente) return;
-                setFotos(juntas);
+                setFotos(guardadas);
                 setCargando(false);
-                if (juntas.some((foto) => foto.estado === "pendiente")) subirPendientes();
+                if (guardadas.some((foto) => foto.estado === "pendiente")) subirPendientes();
             })
             .catch(() => {
                 if (!vigente) return;
@@ -172,28 +153,7 @@ export function useFotos(uuid: string): UsoFotos {
         return () => {
             vigente = false;
         };
-    }, [sincronizar, subirPendientes, avisar]);
-
-    // Cambios hechos desde otro celular del mismo jugador: se vuelve a sincronizar
-    useEffect(() => {
-        let temporizador: number | undefined;
-        const canal = supabase()
-            .channel(`fotos-${uuid}`)
-            .on("postgres_changes", { event: "*", schema: "public", table: "fotos", filter: `jugador_id=eq.${uuid}` }, () => {
-                window.clearTimeout(temporizador);
-                temporizador = window.setTimeout(() => {
-                    sincronizar().then((juntas) => {
-                        // Las que se borraron acá mientras tanto no vuelven
-                        setFotos(juntas.filter((foto) => !eliminadas.current.has(foto.id)));
-                    }).catch(() => { });
-                }, 400);
-            })
-            .subscribe();
-        return () => {
-            window.clearTimeout(temporizador);
-            supabase().removeChannel(canal);
-        };
-    }, [uuid, sincronizar]);
+    }, [uuid, subirPendientes, avisar]);
 
     // Reintento automático al recuperar la conexión (RF-12) y aviso al perderla
     useEffect(() => {
@@ -216,7 +176,7 @@ export function useFotos(uuid: string): UsoFotos {
         };
     }, []);
 
-    // Vista previa desde el blob local si existe; si no, la URL firmada de Storage
+    // Vista previa desde el blob local si existe; si no, la URL de UploadThing
     const urlDeFoto = useCallback((foto: Foto) => {
         if (!foto.blob) return foto.url ?? "";
         let url = urlsLocales.current.get(foto.id);
