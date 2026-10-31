@@ -76,19 +76,17 @@ export async function borrarFoto(id: string): Promise<void> {
 
 // Junta las fotos de la base con las locales y deja IndexedDB igual:
 // - las de la base se guardan (sin blob si se subieron desde otro celular);
-// - las locales ya subidas que no están en la base se borraron en otro celular;
+// - las fotos locales ya subidas se conservan aunque la consulta remota no las
+//   devuelva: una respuesta vacía no distingue entre un borrado real y una
+//   sesión o conexión que todavía no está disponible;
 // - las pendientes se conservan hasta que suban
 export async function sincronizarFotos(uuid: string, remotas: Foto[]): Promise<Foto[]> {
   const locales = await listarFotos(uuid);
   const porId = new Map(locales.map((foto) => [foto.id, foto]));
-  const idsRemotos = new Set(remotas.map((foto) => foto.id));
   const almacen = await abrirAlmacen("readwrite");
   const pedidos: Promise<unknown>[] = [];
 
-  for (const local of locales) {
-    if (local.estado === "subida" && !idsRemotos.has(local.id)) pedidos.push(esperar(almacen.delete(local.id)));
-  }
-  const resultado: Foto[] = locales.filter((local) => local.estado === "pendiente" && !idsRemotos.has(local.id));
+  const resultado = new Map(locales.map((foto) => [foto.id, foto]));
   for (const remota of remotas) {
     const local = porId.get(remota.id);
     const combinada = {
@@ -97,8 +95,8 @@ export async function sincronizarFotos(uuid: string, remotas: Foto[]): Promise<F
       url: remota.url ?? local?.url ?? null,
     };
     pedidos.push(esperar(almacen.put(combinada)));
-    resultado.push(combinada);
+    resultado.set(combinada.id, combinada);
   }
   await Promise.all(pedidos);
-  return resultado.sort((a, b) => a.capturadaEn.localeCompare(b.capturadaEn));
+  return [...resultado.values()].sort((a, b) => a.capturadaEn.localeCompare(b.capturadaEn));
 }

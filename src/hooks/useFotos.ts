@@ -153,16 +153,22 @@ export function useFotos(uuid: string): UsoFotos {
         }
     }, [uuid]);
 
-    // Carga las fotos e intenta subir las que quedaron pendientes
+    // Muestra primero la copia local. La consulta remota no debe bloquear ni
+    // borrar las fotos que el jugador ya tiene guardadas en este dispositivo.
     useEffect(() => {
         navigator.storage?.persist?.().catch(() => { });
         let vigente = true;
-        sincronizar()
-            .then((juntas) => {
+        listarFotos(uuid)
+            .then((locales) => {
                 if (!vigente) return;
-                setFotos(juntas);
+                setFotos(locales);
                 setCargando(false);
-                if (juntas.some((foto) => foto.estado === "pendiente")) subirPendientes();
+                if (locales.some((foto) => foto.estado === "pendiente")) subirPendientes();
+                return sincronizar();
+            })
+            .then((juntas) => {
+                if (!vigente || !juntas) return;
+                setFotos(juntas.filter((foto) => !eliminadas.current.has(foto.id)));
             })
             .catch(() => {
                 if (!vigente) return;
@@ -172,7 +178,7 @@ export function useFotos(uuid: string): UsoFotos {
         return () => {
             vigente = false;
         };
-    }, [sincronizar, subirPendientes, avisar]);
+    }, [uuid, sincronizar, subirPendientes, avisar]);
 
     // Cambios hechos desde otro celular del mismo jugador: se vuelve a sincronizar
     useEffect(() => {
