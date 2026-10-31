@@ -1,34 +1,34 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/tipos";
 
-// Cliente de Supabase del navegador. La sesión (un usuario anónimo, sin email)
-// queda guardada en localStorage
+// Cliente de Supabase del navegador. La sesión (una cuenta de Google) queda
+// guardada en localStorage. PKCE: al volver de Google, detectSessionInUrl canjea
+// el ?code= de la URL por la sesión
 let cliente: SupabaseClient<Database> | null = null;
 
 export function supabase(): SupabaseClient<Database> {
   cliente ??= createClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-    { auth: { persistSession: true, autoRefreshToken: true } },
+    { auth: { flowType: "pkce", persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } },
   );
   return cliente;
 }
 
-let sesionEnCurso: Promise<string> | null = null;
+// No hay sesión de una cuenta de Google (no entró, cerró sesión o sigue anónimo)
+export class SinCuenta extends Error {
+  constructor() {
+    super("Hay que entrar con Google");
+  }
+}
 
-// Devuelve el id del usuario anónimo de este navegador; lo crea la primera vez
-export function asegurarSesion(): Promise<string> {
-  sesionEnCurso ??= (async () => {
-    const { data } = await supabase().auth.getSession();
-    if (data.session) return data.session.user.id;
-    const { data: nueva, error } = await supabase().auth.signInAnonymously();
-    if (error || !nueva.user) {
-      sesionEnCurso = null;
-      throw error ?? new Error("No se pudo iniciar la sesión");
-    }
-    return nueva.user.id;
-  })();
-  return sesionEnCurso;
+// Devuelve el id de la cuenta de este navegador. Los usuarios anónimos de antes
+// tienen que vincular su cuenta de Google desde el inicio
+export async function asegurarSesion(): Promise<string> {
+  const { data } = await supabase().auth.getSession();
+  const usuario = data.session?.user;
+  if (!usuario || usuario.is_anonymous) throw new SinCuenta();
+  return usuario.id;
 }
 
 export const BUCKET_FOTOS = "fotos";

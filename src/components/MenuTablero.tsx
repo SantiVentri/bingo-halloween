@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from "react";
-import { ChevronRight, Dices, LifeBuoy, Share2, Trash2, UserPlus, Users } from "lucide-react";
+import { ChevronRight, Dices, DoorOpen, LogOut, Share2, Trash2, UserPlus, Users } from "lucide-react";
 import styles from "./MenuTablero.module.css";
 import Dialogo from "@/components/ui/Dialogo";
 
@@ -16,10 +16,11 @@ type MenuTableroProps = {
     puedeCompartir: boolean;
     onCompartir: () => void;
     onGrupo: () => void;
-    onRespaldo: () => void;
     onCambiar: () => void;
     onBorrarTodo: () => void;
     onRevision: () => void;
+    onSalirDelGrupo: () => void;
+    onCerrarSesion: () => void;
 };
 
 type OpcionProps = {
@@ -63,10 +64,11 @@ export default function MenuTablero({
     puedeCompartir,
     onCompartir,
     onGrupo,
-    onRespaldo,
     onCambiar,
     onBorrarTodo,
     onRevision,
+    onSalirDelGrupo,
+    onCerrarSesion,
 }: MenuTableroProps) {
     function elegir(accion: () => void) {
         onCerrar();
@@ -90,12 +92,6 @@ export default function MenuTablero({
                     titulo="Mi grupo"
                     detalle={`Código ${codigoGrupo} · invitar y ver quién entregó`}
                     onElegir={() => elegir(onGrupo)}
-                />
-                <Opcion
-                    icono={<LifeBuoy />}
-                    titulo="Código de recuperación"
-                    detalle="Para seguir con tu tablero en otro celular"
-                    onElegir={() => elegir(onRespaldo)}
                 />
                 <Opcion
                     icono={<Users />}
@@ -123,6 +119,19 @@ export default function MenuTablero({
                     peligro
                     deshabilitada={cerrado || !hayFotos}
                     onElegir={() => elegir(onBorrarTodo)}
+                />
+                <Opcion
+                    icono={<DoorOpen />}
+                    titulo="Salir del grupo"
+                    detalle="Volver a Mis grupos; tu tablero queda guardado"
+                    onElegir={() => elegir(onSalirDelGrupo)}
+                />
+                <Opcion
+                    icono={<LogOut />}
+                    titulo="Cerrar sesión"
+                    detalle="Salir de tu cuenta de Google en este celular"
+                    peligro
+                    onElegir={() => elegir(onCerrarSesion)}
                 />
             </ul>
         </Dialogo>

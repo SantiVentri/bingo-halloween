@@ -2,7 +2,7 @@
 // El tablero y las fotos ya viven en el celular (localStorage e IndexedDB):
 // alcanza con guardar las páginas y los archivos de la app.
 // Subir fotos, entregar y la revisión siguen necesitando internet.
-const CACHE = "bingo-v3";
+const CACHE = "bingo-v4";
 const PAGINAS = ["/", "/tablero", "/finalizar", "/revision", "/resultado"];
 
 // Archivos de la app que aparecen en el HTML: código, estilos y fuentes

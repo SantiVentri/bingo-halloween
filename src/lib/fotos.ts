@@ -115,6 +115,25 @@ export async function borrarFoto(id: string): Promise<void> {
   await esperar(almacen.delete(id));
 }
 
+// Al cerrar sesión: borra la copia local de las fotos que ya están en la nube (de
+// todos los jugadores). Las pendientes quedan, para subirlas cuando se vuelva a entrar
+export async function borrarFotosSubidas(): Promise<void> {
+  const almacen = await abrirAlmacen("readwrite");
+  await new Promise<void>((resolve, reject) => {
+    const pedido = almacen.openCursor();
+    pedido.onsuccess = () => {
+      const cursor = pedido.result;
+      if (!cursor) {
+        resolve();
+        return;
+      }
+      if ((cursor.value as Registro).estado === "subida") cursor.delete();
+      cursor.continue();
+    };
+    pedido.onerror = () => reject(pedido.error);
+  });
+}
+
 // Junta las fotos de la base con las locales y deja IndexedDB igual:
 // - las de la base se guardan (sin datos si se subieron desde otro celular);
 // - las locales ya subidas que no están en la base se borraron en otro celular;
