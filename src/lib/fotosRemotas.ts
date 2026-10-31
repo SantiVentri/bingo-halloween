@@ -32,6 +32,15 @@ export async function listarFotosRemotas(jugadorId: string): Promise<Foto[]> {
   return data.map((fila) => aFoto(fila, urls.get(fila.ruta) ?? null));
 }
 
+// Descarga una copia local para que las fotos sigan visibles después de cerrar
+// la app o cuando la URL firmada deje de ser válida.
+export async function descargarFotoRemota(foto: Foto): Promise<Blob> {
+  if (!foto.url) throw new Error(`La foto ${foto.id} no tiene una URL`);
+  const respuesta = await fetch(foto.url, { cache: "no-store" });
+  if (!respuesta.ok) throw new Error(`No se pudo descargar la foto ${foto.id}`);
+  return respuesta.blob();
+}
+
 // La foto recién subida se sigue viendo desde el blob local: si la firma falla,
 // no se repite la subida por eso. La URL llega en la próxima sincronización
 async function urlFirmada(ruta: string): Promise<string | null> {

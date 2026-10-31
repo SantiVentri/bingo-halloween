@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { generarUuid } from "@/lib/jugador";
 import { borrarFoto, guardarFoto, listarFotos, obtenerFoto, sincronizarFotos, type Foto } from "@/lib/fotos";
 import { comprimirImagen, TAMANO_MAXIMO } from "@/lib/imagenes";
-import { borrarFotosRemotas, listarFotosRemotas, subirFoto } from "@/lib/fotosRemotas";
+import { borrarFotosRemotas, descargarFotoRemota, listarFotosRemotas, subirFoto } from "@/lib/fotosRemotas";
 import { asegurarSesion, supabase } from "@/lib/supabase/cliente";
 import { useAvisos } from "@/components/Avisos";
 
@@ -135,7 +135,19 @@ export function useFotos(uuid: string): UsoFotos {
         const locales = await listarFotos(uuid);
         try {
             await asegurarSesion();
-            return await sincronizarFotos(uuid, await listarFotosRemotas(uuid));
+            const juntas = await sincronizarFotos(uuid, await listarFotosRemotas(uuid));
+            // Las fotos remotas también quedan en IndexedDB. Así una recarga,
+            // un cierre de la app o una URL firmada vencida no las deja sin vista.
+            for (const foto of juntas) {
+                if (foto.estado !== "subida" || foto.blob || !foto.url) continue;
+                try {
+                    await guardarFoto({ ...foto, blob: await descargarFotoRemota(foto) });
+                } catch {
+                    // La URL puede fallar sin conexión; se conserva la foto sin
+                    // blob para reintentar en la próxima sincronización.
+                }
+            }
+            return await listarFotos(uuid);
         } catch {
             return locales;
         }
@@ -143,6 +155,7 @@ export function useFotos(uuid: string): UsoFotos {
 
     // Carga las fotos e intenta subir las que quedaron pendientes
     useEffect(() => {
+        navigator.storage?.persist?.().catch(() => { });
         let vigente = true;
         sincronizar()
             .then((juntas) => {
