@@ -1,6 +1,6 @@
 {
   "name": "bingo-halloween",
-  "version": "1.0.0",
+  "version": "2.0.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -9,12 +9,11 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@uploadthing/react": "^7.3.3",
+    "@supabase/supabase-js": "^2.118.0",
     "lucide-react": "^1.64.0",
     "next": "16.4.3",
     "react": "19.3.0",
-    "react-dom": "19.3.0",
-    "uploadthing": "^7.7.4"
+    "react-dom": "19.3.0"
   },
   "devDependencies": {
     "@types/node": "^20",
