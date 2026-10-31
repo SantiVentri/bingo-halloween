@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from "react";
-import { ChevronRight, Dices, LifeBuoy, Share2, Trash2, UserPlus, Users } from "lucide-react";
+import { ChevronRight, Dices, LifeBuoy, LogOut, Share2, Trash2, UserPlus, Users } from "lucide-react";
 import styles from "./MenuTablero.module.css";
 import Dialogo from "@/components/ui/Dialogo";
 
@@ -20,6 +20,7 @@ type MenuTableroProps = {
     onCambiar: () => void;
     onBorrarTodo: () => void;
     onRevision: () => void;
+    onSalirDelGrupo: () => void;
 };
 
 type OpcionProps = {
@@ -67,6 +68,7 @@ export default function MenuTablero({
     onCambiar,
     onBorrarTodo,
     onRevision,
+    onSalirDelGrupo,
 }: MenuTableroProps) {
     function elegir(accion: () => void) {
         onCerrar();
@@ -123,6 +125,13 @@ export default function MenuTablero({
                     peligro
                     deshabilitada={cerrado || !hayFotos}
                     onElegir={() => elegir(onBorrarTodo)}
+                />
+                <Opcion
+                    icono={<LogOut />}
+                    titulo="Salir del grupo"
+                    detalle="Volver al inicio para entrar a otro grupo"
+                    peligro
+                    onElegir={() => elegir(onSalirDelGrupo)}
                 />
             </ul>
         </Dialogo>

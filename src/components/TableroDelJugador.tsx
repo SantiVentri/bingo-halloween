@@ -65,6 +65,7 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
     const [compartirAbierto, setCompartirAbierto] = useState(false);
     const [porBorrar, setPorBorrar] = useState<Foto | null>(null);
     const [reabriendo, setReabriendo] = useState(false);
+    const [saliendo, setSaliendo] = useState(false);
     // Cantidad de fotos al abrir la alerta de borrar todo; null si está cerrada
     const [borrandoTodo, setBorrandoTodo] = useState<number | null>(null);
     // Hasta 2 cambios de una celda por una categoría al azar, sin deshacer
@@ -276,6 +277,7 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
                 onCambiar={() => setModoCambio(true)}
                 onBorrarTodo={() => setBorrandoTodo(fotos.length)}
                 onRevision={() => router.push("/revision")}
+                onSalirDelGrupo={() => setSaliendo(true)}
             />
             <DialogoGrupo
                 abierto={grupoAbierto}
@@ -336,6 +338,23 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
                 accionEnCurso="Reabriendo…"
                 onConfirmar={reabrir}
                 onCerrar={() => setReabriendo(false)}
+            />
+            {/* Cada jugador es de un solo grupo: salir es olvidarlo en este celular.
+                Sigue en la base y se vuelve con el código de recuperación */}
+            <Confirmacion
+                abierta={saliendo}
+                titulo={`¿Salir del grupo ${jugador.grupo.codigo}?`}
+                texto="Vas a volver al inicio para crear o entrar a otro grupo con un tablero nuevo. Este tablero no se borra: para volver a él vas a necesitar tu código de recuperación, así que guardalo antes de salir."
+                accion="Salir"
+                accionEnCurso="Saliendo…"
+                onConfirmar={() => {
+                    olvidarJugador();
+                    // Navegación completa: con router.push el inicio, guardado oculto
+                    // con su estado, seguiría saludando al jugador anterior
+                    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- hay que descartar el estado del inicio
+                    window.location.assign("/");
+                }}
+                onCerrar={() => setSaliendo(false)}
             />
         </>
     );
