@@ -1,38 +1,49 @@
-/* Sistema de diseño: paleta tomada del póster, tipografías, radios y sombras */
+/* Sistema de diseño: "Sangre chorreada". Negro, rojo sangre, naranja y papel hueso */
 :root {
-  /* Fondos (el marrón del póster y sus variantes) */
-  --fondo: #5e4c47;
-  --fondo-profundo: #4a3b37;
-  --superficie: #6b5853;
-  --superficie-alta: #78645e;
-  --borde: rgba(242, 239, 233, 0.14);
-  --borde-fuerte: rgba(242, 239, 233, 0.3);
+  /* Fondos */
+  --fondo: #0e0b0b;
+  --fondo-profundo: #151010;
+  --superficie: #1c1515;
+  --superficie-alta: #2e2320;
+  --borde: rgba(242, 232, 216, 0.14);
+  --borde-fuerte: rgba(242, 232, 216, 0.32);
 
-  /* Texto */
-  --texto: #ffffff;
-  --texto-suave: rgba(242, 239, 233, 0.74);
+  /* Texto. El texto chico nunca va en rojo sobre negro: no alcanza el contraste */
+  --texto: #f2e8d8;
+  --texto-suave: #b9aa9a;
+  --tinta: #0e0b0b;
 
-  /* Acentos del póster */
-  --sangre: #ff3131;
-  --sangre-presionada: #e02424;
-  --calabaza: #f0872a;
-  --hueso: #f2efe9;
+  /* Acentos */
+  --sangre: #d0142c;
+  --sangre-presionada: #7a1020;
+  --sobre-sangre: #fff3e6;
+  --calabaza: #f47b20;
+  --calabaza-tenue: rgba(244, 123, 32, 0.16);
+  --hueso: #f2e8d8;
+  --hueso-presionado: #d9cbb6;
 
   /* Estados */
   --exito: #63c27b;
+  --exito-tenue: rgba(99, 194, 123, 0.2);
   --peligro: #ff5a5f;
+  --peligro-tenue: rgba(255, 90, 95, 0.16);
 
-  --velo: rgba(24, 15, 13, 0.72);
-  --sombra-texto: rgba(0, 0, 0, 0.6);
-  --elevacion: 0 12px 32px rgba(0, 0, 0, 0.35);
+  --velo: rgba(14, 11, 11, 0.8);
+  --elevacion: 0 12px 32px rgba(0, 0, 0, 0.5);
 
-  --radio-s: 8px;
-  --radio-m: 12px;
-  --radio-l: 20px;
+  /* Sin radios grandes: la forma propia la dan los bordes rasgados */
+  --radio-s: 2px;
+  --radio-m: 3px;
+  --radio-l: 4px;
   --radio-total: 999px;
 
-  --fuente-texto: var(--font-nunito), system-ui, sans-serif;
-  --fuente-titulo: var(--font-luckiest), var(--fuente-texto);
+  /* Borde rasgado de los botones y de la parte de abajo de los diálogos */
+  --rasgado: polygon(0 8%, 6% 0, 21% 5%, 38% 1%, 57% 6%, 76% 1%, 94% 5%, 100% 0, 99% 88%, 88% 100%, 70% 92%, 52% 100%, 35% 93%, 17% 100%, 1% 92%);
+  --rasgado-abajo: polygon(0 0, 100% 0, 100% calc(100% - 8px), 92% 100%, 84% calc(100% - 7px), 71% 100%, 58% calc(100% - 8px), 42% 100%, 27% calc(100% - 7px), 12% 100%, 0 calc(100% - 8px));
+
+  --fuente-texto: var(--font-nunito-sans), system-ui, sans-serif;
+  --fuente-titulo: var(--font-anton), var(--fuente-texto);
+  --fuente-logo: var(--font-rubik-wet-paint), var(--fuente-titulo);
   --fuente-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
 
@@ -90,7 +101,7 @@ button {
 
 ::selection {
   background-color: var(--calabaza);
-  color: var(--texto);
+  color: var(--tinta);
 }
 
 /* Contenido solo para lectores de pantalla */

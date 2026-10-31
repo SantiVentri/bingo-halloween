@@ -1,0 +1,42 @@
+.contenido {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.estado {
+    font-weight: 800;
+}
+
+.texto {
+    color: var(--texto-suave);
+}
+
+.cerrado {
+    display: flex;
+    gap: 10px;
+    padding: 12px;
+    border-left: 3px solid var(--calabaza);
+    background-color: var(--calabaza-tenue);
+    font-size: 15px;
+}
+
+.cerrado svg {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    color: var(--calabaza);
+}
+
+.cierre {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-top: 14px;
+    border-top: 1px solid var(--borde);
+}
+
+.ayuda {
+    font-size: 14px;
+    color: var(--texto-suave);
+}
