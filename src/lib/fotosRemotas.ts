@@ -28,17 +28,23 @@ export async function listarFotosRemotas(jugadorId: string): Promise<Foto[]> {
     .eq("jugador_id", jugadorId)
     .order("capturada_en");
   if (error) throw error;
-  const urls = await urlsFirmadas(data.map((fila) => fila.ruta));
-  return data.map((fila) => aFoto(fila, urls.get(fila.ruta) ?? null));
+  const urls = await Promise.all(data.map(async (fila) => ({
+    ruta: fila.ruta,
+    url: await urlFirmada(fila.ruta),
+  })));
+  const porRuta = new Map(urls.map(({ ruta, url }) => [ruta, url]));
+  return data.map((fila) => aFoto(fila, porRuta.get(fila.ruta) ?? null));
 }
 
 // Descarga una copia local para que las fotos sigan visibles después de cerrar
 // la app o cuando la URL firmada deje de ser válida.
 export async function descargarFotoRemota(foto: Foto): Promise<Blob> {
-  if (!foto.url) throw new Error(`La foto ${foto.id} no tiene una URL`);
-  const respuesta = await fetch(foto.url, { cache: "no-store" });
-  if (!respuesta.ok) throw new Error(`No se pudo descargar la foto ${foto.id}`);
-  return respuesta.blob();
+  const { data, error } = await supabase()
+    .storage
+    .from(BUCKET_FOTOS)
+    .download(rutaDeFoto(foto.uuid, foto.id));
+  if (error) throw error;
+  return data;
 }
 
 // La foto recién subida se sigue viendo desde el blob local: si la firma falla,
