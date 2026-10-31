@@ -90,7 +90,12 @@ export async function sincronizarFotos(uuid: string, remotas: Foto[]): Promise<F
   }
   const resultado: Foto[] = locales.filter((local) => local.estado === "pendiente" && !idsRemotos.has(local.id));
   for (const remota of remotas) {
-    const combinada = { ...remota, blob: porId.get(remota.id)?.blob ?? null };
+    const local = porId.get(remota.id);
+    const combinada = {
+      ...remota,
+      blob: local?.blob ?? null,
+      url: remota.url ?? local?.url ?? null,
+    };
     pedidos.push(esperar(almacen.put(combinada)));
     resultado.push(combinada);
   }

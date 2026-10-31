@@ -41,7 +41,8 @@ const firmas = new Map<string, { url: string; venceEn: number }>();
 // El bucket es privado: las fotos se ven con URLs firmadas, que la base solo da a
 // quien puede verlas (el dueño o su grupo). Se reutilizan mientras no estén por
 // vencer: una URL nueva haría que las <img> descarguen la foto otra vez.
-// Las rutas que no se pudieron firmar no aparecen en el resultado
+// Si una firma falla, se reintenta individualmente para evitar que un error
+// parcial del pedido en lote deje fotos con URLs rotas.
 export async function urlsFirmadas(rutas: string[]): Promise<Map<string, string>> {
   const ahora = Date.now();
   const faltan = [...new Set(rutas)].filter((ruta) => (firmas.get(ruta)?.venceEn ?? 0) - ahora < MARGEN_FIRMA);
@@ -53,9 +54,33 @@ export async function urlsFirmadas(rutas: string[]): Promise<Map<string, string>
         firmas.set(firmada.path, { url: firmada.signedUrl, venceEn: ahora + DURACION_FIRMA * 1000 });
       }
     }
+
+    const faltanReintento = faltan.filter((ruta) => !firmas.has(ruta));
+    const reintentos = await Promise.allSettled(faltanReintento.map(async (ruta) => {
+      const resultado = await supabase().storage.from(BUCKET_FOTOS).createSignedUrl(ruta, DURACION_FIRMA);
+      if (resultado.error || !resultado.data?.signedUrl) {
+        throw resultado.error ?? new Error(`No se pudo firmar ${ruta}`);
+      }
+      return { ruta, url: resultado.data.signedUrl };
+    }));
+    const errores = reintentos.filter(
+      (resultado): resultado is PromiseRejectedResult => resultado.status === "rejected",
+    );
+    reintentos.forEach((resultado) => {
+      if (resultado.status === "fulfilled") {
+        firmas.set(resultado.value.ruta, {
+          url: resultado.value.url,
+          venceEn: ahora + DURACION_FIRMA * 1000,
+        });
+      }
+    });
+    if (errores.length > 0) {
+      throw new Error(`No se pudieron firmar ${errores.length} fotos`);
+    }
   }
   return new Map(rutas.flatMap((ruta) => {
     const firma = firmas.get(ruta);
-    return firma ? [[ruta, firma.url] as const] : [];
+    if (!firma) throw new Error(`No hay una URL firmada para ${ruta}`);
+    return [[ruta, firma.url] as const];
   }));
 }
