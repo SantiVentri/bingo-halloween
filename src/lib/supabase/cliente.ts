@@ -42,7 +42,8 @@ const firmas = new Map<string, { url: string; venceEn: number }>();
 // quien puede verlas (el dueño o su grupo). Se reutilizan mientras no estén por
 // vencer: una URL nueva haría que las <img> descarguen la foto otra vez.
 // Si una firma falla, se reintenta individualmente para evitar que un error
-// parcial del pedido en lote deje fotos con URLs rotas.
+// parcial del pedido en lote deje fotos con URLs rotas. Las rutas que igual no se
+// pudieron firmar no aparecen en el resultado: una foto sin URL no frena las demás
 export async function urlsFirmadas(rutas: string[]): Promise<Map<string, string>> {
   const ahora = Date.now();
   const faltan = [...new Set(rutas)].filter((ruta) => (firmas.get(ruta)?.venceEn ?? 0) - ahora < MARGEN_FIRMA);
@@ -63,9 +64,6 @@ export async function urlsFirmadas(rutas: string[]): Promise<Map<string, string>
       }
       return { ruta, url: resultado.data.signedUrl };
     }));
-    const errores = reintentos.filter(
-      (resultado): resultado is PromiseRejectedResult => resultado.status === "rejected",
-    );
     reintentos.forEach((resultado) => {
       if (resultado.status === "fulfilled") {
         firmas.set(resultado.value.ruta, {
@@ -74,13 +72,9 @@ export async function urlsFirmadas(rutas: string[]): Promise<Map<string, string>
         });
       }
     });
-    if (errores.length > 0) {
-      throw new Error(`No se pudieron firmar ${errores.length} fotos`);
-    }
   }
   return new Map(rutas.flatMap((ruta) => {
     const firma = firmas.get(ruta);
-    if (!firma) throw new Error(`No hay una URL firmada para ${ruta}`);
-    return [[ruta, firma.url] as const];
+    return firma ? [[ruta, firma.url] as const] : [];
   }));
 }
