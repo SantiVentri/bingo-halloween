@@ -139,7 +139,7 @@ export function useFotos(uuid: string): UsoFotos {
             // Las fotos remotas también quedan en IndexedDB. Así una recarga,
             // un cierre de la app o una URL firmada vencida no las deja sin vista.
             for (const foto of juntas) {
-                if (foto.estado !== "subida" || foto.blob || !foto.url) continue;
+                if (foto.estado !== "subida" || foto.blob) continue;
                 try {
                     await guardarFoto({ ...foto, blob: await descargarFotoRemota(foto) });
                 } catch {
