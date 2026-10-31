@@ -1,9 +1,9 @@
 import { asegurarSesion, supabase } from "@/lib/supabase/cliente";
 
-// Jugador sin login (RF-01, RF-02, RF-03): cada navegador entra a Supabase con un
-// usuario anónimo y queda vinculado a un jugador. Con el código de recuperación se
-// vincula otro navegador al mismo jugador; los dos siguen funcionando.
-// Cada jugador es de un solo grupo, para siempre: solo ve y vota a los de su grupo.
+// Se entra con una cuenta de Google, que es la misma en todos los grupos y
+// dispositivos. Un jugador es la participación de la cuenta en un grupo, con su
+// propio nombre y tablero: solo ve y vota a los de su grupo. La cuenta puede jugar
+// en varios grupos ("Mis grupos") y volver a cualquiera con el mismo tablero.
 // En localStorage queda el jugador activo de este navegador
 export type Grupo = {
   id: string;
@@ -20,7 +20,10 @@ export type Jugador = {
   grupo: Grupo;
 };
 
-const CLAVE_JUGADOR = "bingo-halloween:jugador";
+const CLAVE_JUGADOR = "bingo-halloween:jugador-activo";
+// Donde lo guardaba la versión con usuarios anónimos: si está, este navegador tiene
+// un tablero que se conserva al vincular la cuenta de Google
+const CLAVE_JUGADOR_ANONIMO = "bingo-halloween:jugador";
 
 export const LARGO_MAXIMO_NOMBRE = 30;
 
@@ -97,8 +100,30 @@ function guardarJugador(jugador: Jugador): void {
   localStorage.setItem(CLAVE_JUGADOR, JSON.stringify(jugador));
 }
 
+// Al tocar un grupo de "Mis grupos" o entrar a uno
+export function elegirJugador(jugador: Jugador): void {
+  guardarJugador(jugador);
+}
+
+// Deja de mostrar el jugador en este navegador; sigue en el grupo y en "Mis grupos"
 export function olvidarJugador(): void {
   localStorage.removeItem(CLAVE_JUGADOR);
+}
+
+// Nombre del jugador de la versión anónima guardado en este navegador, o null
+export function nombreDelJugadorAnonimo(): string | null {
+  try {
+    const guardado = localStorage.getItem(CLAVE_JUGADOR_ANONIMO);
+    if (!guardado) return null;
+    const { nombre } = JSON.parse(guardado) as Record<string, unknown>;
+    return typeof nombre === "string" ? nombre : null;
+  } catch {
+    return null;
+  }
+}
+
+export function olvidarJugadorAnonimo(): void {
+  localStorage.removeItem(CLAVE_JUGADOR_ANONIMO);
 }
 
 type FilaJugadorConGrupo = {
@@ -124,24 +149,33 @@ export class ErrorDeGrupo extends Error {
   }
 }
 
-// Busca el grupo antes de pedir el nombre. Devuelve el código normalizado
-export async function buscarGrupo(codigo: string): Promise<string> {
+// Busca el grupo antes de pedir el nombre. Si la cuenta ya juega en él, devuelve
+// su jugador (se entra directo, aunque el grupo haya cerrado las entregas)
+export async function buscarGrupo(codigo: string): Promise<{ codigo: string; miJugador: Jugador | null }> {
   await asegurarSesion();
   const normalizado = normalizarCodigoGrupo(codigo);
   const { data, error } = await supabase().rpc("buscar_grupo", { p_codigo: normalizado });
   if (error?.code === "P0002") throw new ErrorDeGrupo("inexistente");
   const fila = data?.[0];
   if (error || !fila) throw error ?? new Error("No se pudo buscar el grupo");
+  if (fila.mi_jugador && fila.mi_nombre !== null) {
+    return {
+      codigo: fila.codigo,
+      miJugador: {
+        id: fila.mi_jugador,
+        nombre: fila.mi_nombre,
+        grupo: { id: fila.id, codigo: fila.codigo, esCreador: fila.es_creador },
+      },
+    };
+  }
   if (fila.cerrado) throw new ErrorDeGrupo("cerrado");
-  return normalizado;
+  return { codigo: fila.codigo, miJugador: null };
 }
 
-// Crea el jugador en la base; devuelve también el código para mostrarlo una vez.
-// Sin código de grupo, crea un grupo nuevo y el jugador queda como su creador
-export async function crearJugador(
-  nombre: string,
-  codigoGrupo: string | null,
-): Promise<{ jugador: Jugador; codigo: string }> {
+// Crea el jugador en la base y lo deja activo. Sin código de grupo, crea un grupo
+// nuevo y el jugador queda como su creador. Si la cuenta ya jugaba en ese grupo,
+// devuelve ese jugador
+export async function crearJugador(nombre: string, codigoGrupo: string | null): Promise<Jugador> {
   await asegurarSesion();
   const { data, error } = await supabase().rpc("crear_jugador", {
     p_nombre: nombre.trim().slice(0, LARGO_MAXIMO_NOMBRE),
@@ -153,10 +187,30 @@ export async function crearJugador(
   if (error || !fila) throw error ?? new Error("No se pudo crear el jugador");
   const jugador = aJugador(fila);
   guardarJugador(jugador);
-  return { jugador, codigo: fila.codigo };
+  return jugador;
 }
 
-// Vincula este navegador al jugador del código. null si el código no existe
+// Un grupo de la cuenta, para la lista del inicio
+export type Participacion = {
+  jugador: Jugador;
+  entregado: boolean;
+  cerrado: boolean;
+};
+
+// Los grupos de la cuenta, del más reciente al más viejo
+export async function misGrupos(): Promise<Participacion[]> {
+  await asegurarSesion();
+  const { data, error } = await supabase().rpc("mis_grupos");
+  if (error) throw error;
+  return (data ?? []).map((fila) => ({
+    jugador: aJugador({ ...fila, id: fila.jugador_id }),
+    entregado: fila.entregado,
+    cerrado: fila.cerrado,
+  }));
+}
+
+// Transición: vincula a la cuenta el jugador de un código de recuperación de la
+// versión anónima. null si el código no existe
 export async function recuperarJugador(codigo: string): Promise<Jugador | null> {
   await asegurarSesion();
   const { data, error } = await supabase().rpc("recuperar_jugador", {
@@ -169,10 +223,4 @@ export async function recuperarJugador(codigo: string): Promise<Jugador | null> 
   const jugador = aJugador(fila);
   guardarJugador(jugador);
   return jugador;
-}
-
-// El código de recuperación del jugador (solo lo puede leer el propio jugador)
-export async function obtenerCodigo(jugadorId: string): Promise<string | null> {
-  const { data } = await supabase().from("codigos").select("codigo").eq("jugador_id", jugadorId).maybeSingle();
-  return data?.codigo ?? null;
 }
