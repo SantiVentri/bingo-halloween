@@ -9,7 +9,6 @@ import SinJugador from "@/components/SinJugador";
 import MarcoTablero from "@/components/MarcoTablero";
 import Tablero from "@/components/Tablero";
 import MenuTablero from "@/components/MenuTablero";
-import Respaldo from "@/components/Respaldo";
 import DialogoGrupo from "@/components/DialogoGrupo";
 import CompartirTablero from "@/components/CompartirTablero";
 import ConfirmarBorrado from "@/components/ConfirmarBorrado";
@@ -20,6 +19,7 @@ import Boton from "@/components/ui/Boton";
 import PantallaMensaje from "@/components/ui/PantallaMensaje";
 import { useAvisos } from "@/components/Avisos";
 import { ErrorDeGrupo, obtenerJugador, olvidarJugador, type Jugador } from "@/lib/jugador";
+import { cerrarSesion } from "@/lib/cuenta";
 import type { Foto } from "@/lib/fotos";
 import { armarCeldas } from "@/lib/imagenTablero";
 import { CAMBIOS_MAXIMOS, CELDAS_TABLERO, generarTablero } from "@/lib/tablero";
@@ -60,12 +60,12 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
     const cambios = tablero?.cambios ?? [];
 
     const [menuAbierto, setMenuAbierto] = useState(false);
-    const [respaldoAbierto, setRespaldoAbierto] = useState(false);
     const [grupoAbierto, setGrupoAbierto] = useState(false);
     const [compartirAbierto, setCompartirAbierto] = useState(false);
     const [porBorrar, setPorBorrar] = useState<Foto | null>(null);
     const [reabriendo, setReabriendo] = useState(false);
     const [saliendo, setSaliendo] = useState(false);
+    const [cerrandoSesion, setCerrandoSesion] = useState(false);
     // Cantidad de fotos al abrir la alerta de borrar todo; null si está cerrada
     const [borrandoTodo, setBorrandoTodo] = useState<number | null>(null);
     // Hasta 2 cambios de una celda por una categoría al azar, sin deshacer
@@ -135,17 +135,19 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
         await recargar();
     }
 
-    // Este navegador perdió la sesión con la que entró: hay que volver a entrar con el código
+    // Se cerró la sesión o esta cuenta no tiene este tablero: se vuelve a entrar
+    // con Google y se elige el grupo en "Mis grupos"
     if (estado.tipo === "sinAcceso") {
         return (
             <PantallaMensaje
                 icono={<UserX />}
-                titulo="Este celular perdió el acceso"
-                texto="Volvé a entrar con tu código de recuperación para seguir con tu tablero."
+                titulo="No pudimos abrir tu tablero"
+                texto="Entrá con tu cuenta de Google y elegí el grupo para seguir con tu tablero."
                 accion={
                     <Boton onClick={() => {
                         olvidarJugador();
-                        router.push("/");
+                        // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- hay que descartar el estado del inicio
+                        window.location.assign("/");
                     }}>
                         Ir al inicio
                     </Boton>
@@ -273,21 +275,16 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
                 puedeCompartir={celdasACompartir !== null}
                 onCompartir={() => setCompartirAbierto(true)}
                 onGrupo={() => setGrupoAbierto(true)}
-                onRespaldo={() => setRespaldoAbierto(true)}
                 onCambiar={() => setModoCambio(true)}
                 onBorrarTodo={() => setBorrandoTodo(fotos.length)}
                 onRevision={() => router.push("/revision")}
                 onSalirDelGrupo={() => setSaliendo(true)}
+                onCerrarSesion={() => setCerrandoSesion(true)}
             />
             <DialogoGrupo
                 abierto={grupoAbierto}
                 onCerrar={() => setGrupoAbierto(false)}
                 jugador={jugador}
-            />
-            <Respaldo
-                abierto={respaldoAbierto}
-                onCerrar={() => setRespaldoAbierto(false)}
-                jugadorId={jugador.id}
             />
             {celdasACompartir && (
                 <CompartirTablero
@@ -339,12 +336,12 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
                 onConfirmar={reabrir}
                 onCerrar={() => setReabriendo(false)}
             />
-            {/* Cada jugador es de un solo grupo: salir es olvidarlo en este celular.
-                Sigue en la base y se vuelve con el código de recuperación */}
+            {/* Salir es dejar de mostrarlo en este celular: el jugador sigue en el
+                grupo y en "Mis grupos", con el mismo tablero */}
             <Confirmacion
                 abierta={saliendo}
                 titulo={`¿Salir del grupo ${jugador.grupo.codigo}?`}
-                texto="Vas a volver al inicio para crear o entrar a otro grupo con un tablero nuevo. Este tablero no se borra: para volver a él vas a necesitar tu código de recuperación, así que guardalo antes de salir."
+                texto="Vas a volver a Mis grupos para entrar a otro o crear uno nuevo. Este tablero no se borra: podés volver cuando quieras desde Mis grupos."
                 accion="Salir"
                 accionEnCurso="Saliendo…"
                 onConfirmar={() => {
@@ -355,6 +352,21 @@ function TableroConFotos({ jugador }: { jugador: Jugador }) {
                     window.location.assign("/");
                 }}
                 onCerrar={() => setSaliendo(false)}
+            />
+            <Confirmacion
+                abierta={cerrandoSesion}
+                titulo="¿Cerrar sesión?"
+                texto={pendientes > 0
+                    ? `Tenés ${pendientes === 1 ? "1 foto" : `${pendientes} fotos`} sin subir: quedan guardadas en este celular y se suben cuando vuelvas a entrar. Tus tableros siguen en tu cuenta de Google.`
+                    : "Tus tableros siguen en tu cuenta de Google: entrá con ella para seguir jugando, en este celular o en otro."}
+                accion="Cerrar sesión"
+                accionEnCurso="Cerrando…"
+                onConfirmar={async () => {
+                    await cerrarSesion();
+                    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- hay que descartar el estado del inicio
+                    window.location.assign("/");
+                }}
+                onCerrar={() => setCerrandoSesion(false)}
             />
         </>
     );

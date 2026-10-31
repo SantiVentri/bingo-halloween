@@ -1,16 +1,22 @@
 'use client'
 
 import { useCallback, useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase/cliente";
+import { SinCuenta, supabase } from "@/lib/supabase/cliente";
 import { leerTablero, type TableroRemoto } from "@/lib/tableroRemoto";
 
 type EstadoTablero =
   | { tipo: "cargando" }
-  // Este navegador ya no tiene acceso al jugador
+  // Esta cuenta no tiene acceso al jugador, o se cerró la sesión
   | { tipo: "sinAcceso" }
   | { tipo: "listo"; tablero: TableroRemoto };
 
 const VACIO: TableroRemoto = { cambios: [], elegidas: {}, entregadoEn: null, entregasCerradas: false };
+
+// Sin sesión no hay acceso; si no, es falta de conexión
+function sinLeer(anterior: EstadoTablero, error: unknown): EstadoTablero {
+  if (error instanceof SinCuenta) return { tipo: "sinAcceso" };
+  return anterior.tipo === "cargando" ? { tipo: "listo", tablero: VACIO } : anterior;
+}
 
 // Cambios, elección y entrega del jugador, leídos de la base y actualizados en vivo
 // (también si se tocan desde otro celular del mismo jugador), más el cierre de
@@ -24,9 +30,9 @@ export function useTableroRemoto(jugadorId: string, grupoId: string) {
     try {
       const tablero = await leerTablero(jugadorId, grupoId);
       setEstado(tablero ? { tipo: "listo", tablero } : { tipo: "sinAcceso" });
-    } catch {
+    } catch (error) {
       // Sin conexión: se queda con lo que había (o vacío la primera vez)
-      setEstado((anterior) => (anterior.tipo === "cargando" ? { tipo: "listo", tablero: VACIO } : anterior));
+      setEstado((anterior) => sinLeer(anterior, error));
     }
   }, [jugadorId, grupoId]);
 
@@ -34,7 +40,7 @@ export function useTableroRemoto(jugadorId: string, grupoId: string) {
     let vigente = true;
     leerTablero(jugadorId, grupoId)
       .then((tablero) => vigente && setEstado(tablero ? { tipo: "listo", tablero } : { tipo: "sinAcceso" }))
-      .catch(() => vigente && setEstado((anterior) => (anterior.tipo === "cargando" ? { tipo: "listo", tablero: VACIO } : anterior)));
+      .catch((error: unknown) => vigente && setEstado((anterior) => sinLeer(anterior, error)));
 
     const filtro = `jugador_id=eq.${jugadorId}`;
     const canal = supabase()

@@ -120,3 +120,13 @@ La revisión era una sola para todos y tenía una decisión compartida por foto 
 - **Base nueva:** la migración `20261101120000_grupos.sql` borra los jugadores existentes. El script `supabase/rollback/20261101120000_grupos_down.sql` deja el esquema como antes.
 
 Deja de aplicar la limitación de que cualquiera con el link podía votar en la revisión.
+
+## 10. Ingreso con Google y "Mis grupos"
+
+El usuario anónimo por navegador y el código de recuperación se reemplazan por una **cuenta de Google**, que es la misma en todos los grupos y celulares:
+
+- **Ingreso:** el inicio tiene un solo botón, *Entrar con Google* (Supabase Auth, OAuth con PKCE). La vuelta de Google pasa por `/auth/callback`. El link de invitación `/?grupo=CÓDIGO` se conserva durante el ingreso.
+- **Un jugador por cuenta y grupo:** el modelo no cambia. Un jugador es la participación de la cuenta en un grupo, con su propio nombre (se sugiere el último que usó o el de Google) y su propio tablero. Volver a entrar a un grupo donde ya se juega abre el mismo tablero, aunque el grupo haya cerrado las entregas.
+- **Mis grupos:** el inicio lista los grupos de la cuenta. *Salir del grupo* vuelve a esa lista sin borrar nada. *Cerrar sesión* sale de la cuenta en ese celular y borra la copia local de las fotos que ya están en la nube; las fotos sin subir se conservan.
+- **Transición desde los usuarios anónimos:** un navegador con un tablero anónimo vincula Google a ese mismo usuario (`linkIdentity`), así que conserva el tablero y las fotos. Si esa cuenta de Google ya estaba en uso, un traspaso con token le pasa los jugadores del usuario anónimo. Los códigos de recuperación que se hayan guardado siguen sirviendo desde el inicio para pasar ese tablero a la cuenta.
+- **Base:** la migración `20261102120000_cuentas_google.sql` no borra datos. Las RPC solo aceptan cuentas, no usuarios anónimos. Para volver atrás está `supabase/rollback/20261102120000_cuentas_google_down.sql`.

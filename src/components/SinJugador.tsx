@@ -8,7 +8,7 @@ export default function SinJugador() {
         <PantallaMensaje
             icono={<Ghost />}
             titulo="Todavía no entraste"
-            texto="Primero poné tu nombre para recibir tu tablero."
+            texto="Entrá con tu cuenta de Google y elegí un grupo para recibir tu tablero."
             accion={<Boton href="/">Ir al inicio</Boton>}
         />
     );

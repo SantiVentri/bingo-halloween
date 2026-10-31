@@ -12,8 +12,8 @@ Pensada para grupos de amigos y para usarse durante el fin de semana de Hallowee
 
 ## Cómo se juega
 
-1. **Sumarse a un grupo o crearlo.** Uno crea el grupo y les pasa a los demás el código de 6 caracteres (por ejemplo `K7QX2M`) o el link de invitación (`/?grupo=K7QX2M`). Cada jugador está en un solo grupo, para siempre.
-2. **Entrar con el nombre.** No hay cuenta ni contraseña: el celular recibe un código de recuperación que conviene guardar (por ejemplo, mandándoselo por WhatsApp). Con ese código se sigue el mismo tablero, en el mismo grupo, desde otro celular.
+1. **Sumarse a un grupo o crearlo.** Uno crea el grupo y les pasa a los demás el código de 6 caracteres (por ejemplo `K7QX2M`) o el link de invitación (`/?grupo=K7QX2M`). Con la misma cuenta se puede jugar en varios grupos, con un tablero (y un nombre) distinto en cada uno.
+2. **Entrar con Google y poner el nombre.** Se entra con una cuenta de Google, y en cada grupo se elige con qué nombre jugar. Con la misma cuenta se siguen los tableros desde cualquier celular. En el inicio, *Mis grupos* lista los grupos de la cuenta. *Salir del grupo* vuelve a esa lista, y el tablero queda guardado.
 3. **Completar el tablero.** Cada jugador tiene 9 categorías al azar (siempre las mismas para su código). Tocar una celda abre la cámara o la galería; se pueden sacar varias fotos por celda.
 4. **Finalizar.** Con las 9 celdas completas aparece **¡Bingo! Finalizar**: se elige la mejor foto de cada celda y se entrega el tablero. Después se puede compartir una imagen del tablero en redes.
 5. **Votar.** En `/revision`, cada jugador que entregó vota **Vale** o **No vale** en cada foto de los demás (las propias no se votan). Los votos son anónimos: se ven los conteos en vivo, no quién votó. Una foto **vale si más de la mitad** de sus votantes dice que vale; el empate no vale.
@@ -41,7 +41,7 @@ Pensada para grupos de amigos y para usarse durante el fin de semana de Hallowee
 | Tipografías | Rubik Wet Paint (logo), Anton (títulos y botones) y Nunito Sans (texto), con `next/font` |
 | Íconos | [lucide-react](https://lucide.dev) e ilustraciones SVG propias en `components/ilustraciones` |
 | Base de datos | [Supabase](https://supabase.com): Postgres con reglas de seguridad (RLS), Realtime y Storage para las fotos |
-| Identidad | Usuario anónimo de Supabase por navegador (sin email) + código de recuperación |
+| Identidad | Cuenta de Google (Supabase Auth, OAuth con PKCE) |
 | Datos locales | IndexedDB: copia de las fotos y cola de las que todavía no subieron |
 | Sin conexión | Service worker propio (`public/sw.js`) |
 | Deploy | [Vercel](https://vercel.com), desde la rama `main` |
@@ -54,8 +54,12 @@ Requisitos: Node.js 20 o superior y un proyecto de Supabase.
 npm install
 ```
 
-1. En Supabase, aplicar en orden las migraciones de `supabase/migrations/`: `20261030120000_inicial.sql`, `20261031120000_no_votar_propias.sql` y `20261101120000_grupos.sql` (SQL Editor, o `npx supabase db push` con el proyecto vinculado). Crean las tablas, las reglas, las funciones, el bucket `fotos` y Realtime.
-2. Habilitar **Anonymous sign-ins** en *Authentication → Sign In / Providers*.
+1. En Supabase, aplicar en orden las migraciones de `supabase/migrations/`: `20261030120000_inicial.sql`, `20261031120000_no_votar_propias.sql`, `20261101120000_grupos.sql` y `20261102120000_cuentas_google.sql` (SQL Editor, o `npx supabase db push` con el proyecto vinculado). Crean las tablas, las reglas, las funciones, el bucket `fotos` y Realtime.
+2. Configurar el ingreso con Google:
+   - En [Google Cloud](https://console.cloud.google.com/apis/credentials), crear un *OAuth client ID* de tipo *Web application*, con el redirect URI `https://<proyecto>.supabase.co/auth/v1/callback`.
+   - En Supabase, en *Authentication → Sign In / Providers*, habilitar **Google** con ese client ID y su secret.
+   - En la misma pantalla, habilitar **Manual linking**: con eso, los usuarios anónimos de la versión anterior pasan a su cuenta de Google y conservan sus tableros. Dejar habilitado **Anonymous sign-ins** mientras queden tableros anónimos por pasar; las sesiones nuevas ya no lo usan.
+   - En *Authentication → URL Configuration*, cargar el *Site URL* de producción. En *Redirect URLs* agregar `https://<dominio>/auth/callback`, `http://localhost:3000/auth/callback` y la IP de la red local si se prueba desde el celular.
 3. Crear `.env.local` (y cargar lo mismo en Vercel):
 
 ```bash
@@ -90,7 +94,8 @@ Para volver atrás está `supabase/rollback/20261101120000_grupos_down.sql`: dej
 ```
 src/
 ├── app/
-│   ├── page.tsx              # Inicio: grupo (unirse o crear), nombre y recuperación
+│   ├── page.tsx              # Inicio: entrar con Google, mis grupos, unirse o crear y nombre
+│   ├── auth/callback/        # Vuelta de Google: completa la sesión (y el traspaso de un usuario anónimo)
 │   ├── tablero/              # El tablero del jugador
 │   ├── finalizar/            # Elección de la foto final de cada celda
 │   ├── revision/             # Revisión y votación del grupo
@@ -115,9 +120,9 @@ docs/
 | Dato | Dónde |
 |---|---|
 | Grupo (código, creador, cierre de entregas) | Tabla `grupos` |
-| Jugador (id, nombre y grupo) | Tabla `jugadores`; en el navegador queda el jugador activo con su grupo (`localStorage` · `bingo-halloween:jugador`) |
-| Código de recuperación | Tabla `codigos` (solo lo lee el propio jugador) |
-| Celulares de cada jugador | Tabla `jugador_dispositivos` (usuarios anónimos de Supabase) |
+| Jugador (id, nombre y grupo: uno por cuenta y grupo) | Tabla `jugadores`; en el navegador queda el jugador activo con su grupo (`localStorage` · `bingo-halloween:jugador-activo`) |
+| Código de recuperación (versión anónima, en transición) | Tabla `codigos`; desde el inicio se usa para pasar ese tablero a la cuenta |
+| Cuenta de cada jugador | Tabla `jugador_dispositivos` (usuarios de Supabase Auth: la cuenta de Google, o el anónimo de antes) |
 | Fotos | Storage, bucket privado `fotos` (`<jugador>/<foto>.jpg`) y tabla `fotos` (con la hora de subida del servidor) |
 | Fotos sin subir | IndexedDB del celular · base `bingo-halloween`, almacén `fotos` |
 | Cambios de categoría | Tabla `cambios` (máximo 2) |

@@ -72,6 +72,14 @@ export type FilaRevision = {
   subida_en: string;
 };
 
+type JugadorConGrupo = {
+  id: string;
+  nombre: string;
+  grupo_id: string;
+  grupo_codigo: string;
+  es_creador: boolean;
+};
+
 type JugadorConCodigo = {
   id: string;
   nombre: string;
@@ -79,6 +87,27 @@ type JugadorConCodigo = {
   grupo_id: string;
   grupo_codigo: string;
   es_creador: boolean;
+};
+
+export type GrupoBuscado = {
+  id: string;
+  codigo: string;
+  cerrado: boolean;
+  // El jugador del usuario en el grupo, si ya juega en él
+  mi_jugador: string | null;
+  mi_nombre: string | null;
+  es_creador: boolean;
+};
+
+export type Participacion = {
+  jugador_id: string;
+  nombre: string;
+  grupo_id: string;
+  grupo_codigo: string;
+  es_creador: boolean;
+  entregado: boolean;
+  cerrado: boolean;
+  creado_en: string;
 };
 
 export type ResumenGrupo = {
@@ -107,8 +136,11 @@ export type Database = {
       revision: { Row: FilaRevision; Relationships: [] };
     };
     Functions: {
-      buscar_grupo: { Args: { p_codigo: string }; Returns: { id: string; cerrado: boolean }[] };
-      crear_jugador: { Args: { p_nombre: string; p_codigo_grupo?: string | null }; Returns: JugadorConCodigo[] };
+      buscar_grupo: { Args: { p_codigo: string }; Returns: GrupoBuscado[] };
+      crear_jugador: { Args: { p_nombre: string; p_codigo_grupo?: string | null }; Returns: JugadorConGrupo[] };
+      mis_grupos: { Args: Record<string, never>; Returns: Participacion[] };
+      preparar_traspaso: { Args: Record<string, never>; Returns: string };
+      completar_traspaso: { Args: { p_token: string }; Returns: number };
       recuperar_jugador: { Args: { p_codigo: string }; Returns: JugadorConCodigo[] };
       entregar: { Args: { p_jugador: string }; Returns: undefined };
       reabrir: { Args: { p_jugador: string }; Returns: undefined };
