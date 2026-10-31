@@ -17,14 +17,8 @@
     text-align: left;
 }
 
-.opcion:active:not(:disabled) {
+.opcion:hover:not(:disabled) {
     background-color: var(--borde);
-}
-
-@media (hover: hover) {
-    .opcion:hover:not(:disabled) {
-        background-color: var(--borde);
-    }
 }
 
 .opcion:disabled {
@@ -40,8 +34,7 @@
     width: 40px;
     height: 40px;
     border-radius: var(--radio-m);
-    background-color: var(--superficie-alta);
-    color: var(--calabaza);
+    background-color: var(--superficie);
 }
 
 .icono svg {
@@ -50,8 +43,12 @@
 }
 
 .peligro .icono {
-    background-color: var(--peligro-tenue);
+    background-color: rgba(255, 90, 95, 0.16);
     color: var(--peligro);
+}
+
+.peligro .titulo {
+    color: #ffc9cb;
 }
 
 .textos {

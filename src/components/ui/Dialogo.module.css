@@ -3,9 +3,10 @@
     flex-direction: column;
     max-height: calc(100dvh - 32px);
     padding: 0;
-    border: none;
-    background-color: var(--superficie);
+    border: 1px solid var(--borde);
+    background-color: var(--fondo-profundo);
     color: var(--texto);
+    box-shadow: var(--elevacion);
     overflow: hidden;
 }
 
@@ -17,12 +18,10 @@
     background-color: var(--velo);
 }
 
-/* Papel rasgado abajo */
 .centro {
     margin: auto;
     width: min(100% - 32px, 420px);
-    padding-bottom: 14px;
-    clip-path: var(--rasgado-abajo);
+    border-radius: var(--radio-l);
 }
 
 /* Hoja que sube desde abajo, con lugar para la barra del iPhone */
@@ -30,7 +29,8 @@
     margin: auto auto 0;
     width: min(100%, 520px);
     max-width: 100%;
-    border-top: 3px solid var(--sangre);
+    border-bottom: none;
+    border-radius: var(--radio-l) var(--radio-l) 0 0;
     padding-bottom: env(safe-area-inset-bottom);
 }
 
@@ -54,11 +54,9 @@
 }
 
 .titulo {
-    font-family: var(--fuente-titulo);
-    font-size: 23px;
-    font-weight: 400;
-    letter-spacing: 0.02em;
-    line-height: 1.15;
+    font-size: 19px;
+    font-weight: 800;
+    line-height: 1.25;
 }
 
 .cerrar {
@@ -68,11 +66,12 @@
     border: none;
     border-radius: var(--radio-s);
     background: none;
-    color: var(--texto);
+    color: var(--texto-suave);
 }
 
-.cerrar:active:not(:disabled) {
+.cerrar:hover:not(:disabled) {
     background-color: var(--borde);
+    color: var(--texto);
 }
 
 .cerrar:disabled {
@@ -97,12 +96,6 @@
 
 .pie > * {
     flex: 1;
-}
-
-@media (hover: hover) {
-    .cerrar:hover:not(:disabled) {
-        background-color: var(--borde);
-    }
 }
 
 @media (prefers-reduced-motion: reduce) {

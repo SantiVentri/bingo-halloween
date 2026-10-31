@@ -71,7 +71,6 @@
     padding: 6px 10px;
     border-radius: var(--radio-total);
     background-color: var(--calabaza);
-    color: var(--tinta);
     font-size: 14px;
     font-weight: 800;
 }
@@ -92,7 +91,7 @@
     height: 44px;
     border: none;
     border-radius: var(--radio-total);
-    background-color: var(--velo);
+    background-color: rgba(20, 12, 10, 0.6);
     color: var(--texto);
     transform: translateY(-50%);
     backdrop-filter: blur(4px);
@@ -124,7 +123,7 @@
     gap: 6px;
     padding: 6px 8px;
     border-radius: var(--radio-total);
-    background-color: var(--velo);
+    background-color: rgba(20, 12, 10, 0.6);
     transform: translateX(-50%);
 }
 
